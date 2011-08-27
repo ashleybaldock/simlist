@@ -83,321 +83,24 @@ var listen = function (port, host) {
 
 var close = function () { server.close(); };
 
+// do the work of checking the string
+var checkipv6 = function (str) {
+    // From http://intermapper.com/support/tools/IPV6-Validator.aspx
+    return (/^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$/.test(str));
+};
+var checkipv4 = function (str) {
+    // From http://www.regular-expressions.info/examples.html
+    return (/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(str));
+};
+var checkdomain = function (str) {
+    // From http://www.mczen.com/blog/post/viewitemaspxid3deed1cc4f-92a4-4485-85b2-21356a3d18e0.aspx
+    return (/^([a-zA-Z0-9]([-a-zA-Z0-9]+)?\.)+([a-zA-Z]{2,7}\.?)$/.test(str));
+};
 
 
 var listing = {
 
-    model: {},
-
-    // Internal fields are valid but not settable remotely
-    internal_fields: {
-        "id": function (value) {
-            default: function () {
-                while(1) {
-                    // Random number between 1000000000 and 9999999999
-                    var id = 1000000000 + Math.floor(Math.random()*8999999999);
-                    // Check that it isn't already in use
-                    if (!listing.lookup_id(id)) {
-                        return id;
-                    }
-                }
-            },
-            validate: function (value) { return false; },           // Immutable
-            update: function (id, field, value) { return false; }   // Immutable
-        },
-        "did": function (value) {
-            default: function () {
-                while(1) {
-                    // Random number between 1048576 (0x100000) and 16777215 (0xFFFFFF)
-                    var did = (1048576 + Math.floor(Math.random()*15728639)).toString(16);
-                    // Check that it isn't already in use
-                    if (!this.lookup_did(did)) {
-                        return did;
-                    }
-                }
-            },
-            validate: function (value) { return false; },           // Immutable
-            update: function (id, field, value) { return false; }   // Immutable
-        },
-        "ip4": function (value) {
-            default: function () { return ""; },
-            validate: function (value) {
-                return true;                // TODO IPv4 validation
-            },
-            update: listing.update_internal_field,
-        },
-        "ip6": function (value) {
-            default: function () { return ""; },
-            validate: function (value) {
-                return true;                // TODO IPv4 validation
-            },
-            update: listing.update_internal_field,
-        },
-        "date": function (value) {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (typeof value === typeof 0 && value >= 0);
-            },
-            update: function (id) {
-                listing.model[id]["date"] = (new Date()).getTime();
-                listing.sync = true;
-            },
-        }
-    },
-    // Valid fields contains all field identifiers which can be set remotely as keys
-    // and their validator functions as values
-    // If called without a value these functions return the default value for the field
-    valid_fields: {
-        "st": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (typeof value === typeof 0 && value >= 0 && value < 2);
-            },
-            update: listing.update_field,
-        },
-        "type": function (value) {
-            default: function () { return "std"; },
-            validate: function (value) {
-                for (var n in av_type) {
-                    if (value === av_type[n]) { return true; }
-                }
-                return false;
-            },
-            update: listing.update_field,
-        },
-        "dns": {
-            default: function () { return ""; },
-            validate: function (value) {
-                // a-z, 0-9, dot, colon, dash (anything which can be in a url/IPv4/IPv6 address)
-
-                // Validate domain name/IP address here
-                // If IP address is RFC1918, error
-                // If contains ':' -> v6 validation
-                // Else If contains '.' and last character is a number -> v4 validation
-                // Else -> domain validation + lookup IP/IP6
-
-                // TODO it should be an error condition if the dns name supplied does not
-                // resolve to at least one v4/v6 address (indicates hostname is invalid)
-
-                return true;
-            },
-            update: function (id, field, value) {
-                // TODO
-                // Assume that ID has been checked
-                if (this.validate(value)) {
-                    listing.model[id]["dns"] = value;
-                    // Resolve the IPv4/IPv6 address of the hostname
-                    dns.resolve4(value, function (err, addresses) {
-                        // if (err) throw err;
-                        if (!err && addresses.length > 0) {
-                            // TODO - Handle multiple addresses better?
-                            listing.update_internal_field(id, "ip4", addresses[0]);
-                        }
-                    });
-                    dns.resolve6(value, function (err, addresses) {
-                        // if (err) throw err;
-                        if (!err && addresses.length > 0) {
-                            // TODO - Handle multiple addresses better?
-                            listing.update_internal_field(id, "ip6", addresses[0]);
-                        }
-                    });
-                    listing.sync = true;
-                    return true;
-                }
-                return false;
-            },
-        },
-        "port": {
-            default: 13353,
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 65536);
-            },
-            update: listing.update_field,
-        },
-        "rev": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return (typeof value === typeof "str" && value.length < 100);
-            },
-            update: listing.update_field,
-        },
-        "pak": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return (typeof value === typeof "str" && value.length < 100);
-            },
-            update: listing.update_field,
-        },
-        "name": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return (typeof value === typeof "str" && value.length < 200);
-            },
-            update: listing.update_field,
-        },
-        "email": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return true;                        // TODO (email)
-            },
-            update: listing.update_field,
-        },
-        "pakurl": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return true;                        // TODO (url)
-            },
-            update: listing.update_field,
-        },
-        "addurl": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return true;                        // TODO (url)
-            },
-            update: listing.update_field,
-        },
-        "infurl": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return true;                        // TODO (url)
-            },
-            update: listing.update_field,
-        },
-        "comments": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return (typeof value === typeof "str" && value.length < 2000);
-            },
-            update: listing.update_field,
-        },
-        "name": {
-            default: function () { return ""; },
-            validate: function (value) {
-                return (typeof value === typeof "str" && value.length < 100);
-            },
-            update: listing.update_field,
-        },
-        "time": {
-            default: function () { return {"yr": 1, "mn": 0}; },
-            validate: function (value) {
-            },
-            update: ,       // TODO (validate tuple)
-        },
-        "size": {
-            default: function () { return {"x": 0, "y": 0}; },
-            validate: function (value) {
-            },
-            update: ,       // TODO (validate tuple)
-        },
-        "players": {
-            default: function () { return [
-                    {"p":  0, "a": 0, "l": 0},
-                    {"p":  1, "a": 0, "l": 0},
-                    {"p":  2, "a": 0, "l": 0},
-                    {"p":  3, "a": 0, "l": 0},
-                    {"p":  4, "a": 0, "l": 0},
-                    {"p":  5, "a": 0, "l": 0},
-                    {"p":  6, "a": 0, "l": 0},
-                    {"p":  7, "a": 0, "l": 0},
-                    {"p":  8, "a": 0, "l": 0},
-                    {"p":  9, "a": 0, "l": 0},
-                    {"p": 10, "a": 0, "l": 0},
-                    {"p": 11, "a": 0, "l": 0},
-                    {"p": 12, "a": 0, "l": 0},
-                    {"p": 13, "a": 0, "l": 0},
-                    {"p": 14, "a": 0, "l": 0},
-                    {"p": 15, "a": 0, "l": 0}
-                ]; },
-            parse: function (rawvalue) {
-                // If additional fields added to spec they go here
-                var suboutputfields = ["p", "a", "l"];
-                // Raw value looks like:
-                // 0,0,0;1,0,0;2,0,0;3,0,0;4,0,0;...
-                // Split by comma, then parse into dict set
-                // If this fails at any point return false
-                if (typeof rawvalue === typeof "") {
-                    var output = [];
-                    var vals = rawvalue.split(";");
-                    for (var i=0; i<vals.length; i++) {
-                        var suboutput = {};
-                        var subvals = vals[i].split(",");
-                        for (var j=0; j<subvals.length; j++) {
-                            if (j < suboutputfields.length - 1) {
-                                suboutput[suboutputfields[j]] = parseInt(subvals[j]);
-                            }
-                        }
-                        output.push(suboutput);
-                    }
-                    return output;
-                }
-                return false;
-            },
-            validate: function (value) {
-                                                        // TODO
-                // Must be an array
-                // Must contain minimum of 16 dicts
-                // Each dict must contain the fields specified in player_fields
-                // Each field must conform to its own spec
-                    // "p" field must be number > 0
-                    // "a" field must be number 0 or 1
-                    // "l" field must be number 0 or 1
-            },
-            update: function (id, field, value) {
-                                                        // TODO
-                // Data expected in form
-                var candidate = this.parse(value);
-                if (this.validate(candidate)) {
-                    listing.model[id]["players"] = candidate;
-                    listing.sync = true;
-                    return true;
-                }
-                return false;
-            }
-        },
-        "clients": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 16);
-            },
-            update: listing.update_field,
-        },
-        "towns": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0);
-            },
-            update: listing.update_field,
-        },
-        "citizens": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0);
-            },
-            update: listing.update_field,
-        },
-        "factories": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0);
-            },
-            update: listing.update_field,
-        },
-        "convoys": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0);
-            },
-            update: listing.update_field,
-        },
-        "stops": {
-            default: function () { return 0; },
-            validate: function (value) {
-                return (value !== NaN && typeof value === typeof 0 && value > 0);
-            },
-            update: listing.update_field,
-        }
-    },
-
+    // Access methods
     lookup_id: function (lookupid) {
         // Lookup the record with the specified ID, return false if record not found
         for (var id in this.model) {
@@ -416,10 +119,10 @@ var listing = {
         var new_server = {};
         // Add to listing + write out listing file
         for (var key in this.internal_fields) {
-            new_server[key] = this.internal_fields[key]();
+            new_server[key] = this.internal_fields[key].default();
         }
         for (var key in this.valid_fields) {
-            new_server[key] = this.valid_fields[key]();
+            new_server[key] = this.valid_fields[key].default();
         }
         sys.puts("New server created, ID: " + new_server["id"]);
         // Add a new server to the listing
@@ -443,8 +146,8 @@ var listing = {
 
     update_datestamp: function (id) {
         // Set datestamp of specified ID to now()
-        this.update_internal_field(id, "date", Date.now());
-        this.valid_fields["date"].update(id);
+        listing.update_internal_field(id, "date", Date.now());
+        listing.valid_fields["date"].update(id);
         return true;
     },
 
@@ -452,11 +155,13 @@ var listing = {
     update_field: function (id, field, value) {
         // First call parse method, which will take input as it comes in
         // over the wire and convert it into the correct representation
+        sys.puts("update_field for: id: " + id + ", field: " + field + ", value: " + value);
+        var parsedval = listing.valid_fields[field].parse(value);
 
         // Then check with the validate method, if this returns true it's safe
         // to go ahead and update the field
-        if (listing.valid_fields[field].validate(value)) {
-            this.model[id][field] = value;
+        if (listing.valid_fields[field].validate(parsedval)) {
+            listing.model[id][field] = parsedval;
             listing.sync = true;
             return true;
         }
@@ -504,6 +209,412 @@ var listing = {
         listing[id]["date"] = (new Date()).getTime();
         sync = true;        // We should sync data to disk next time sync check runs
         return true;
+    }
+};
+
+
+// Data representation
+listing.model = {};
+
+// Internal fields are valid but not settable remotely
+// Each internal field record has the following methods:
+//   default()  - return a default value
+//   validate() - validate storage format of field
+//   update()   - update the field
+listing.internal_fields = {
+    "id": {
+        default: function () {
+            while(1) {
+                // Random number between 1000000000 and 9999999999
+                var id = 1000000000 + Math.floor(Math.random()*8999999999);
+                // Check that it isn't already in use
+                if (!listing.lookup_id(id)) {
+                    return id;
+                }
+            }
+        },
+        validate: function (value) { return false; },           // Immutable
+        update: function (id, field, value) { return false; }   // Immutable
+    },
+    "did": {
+        default: function () {
+            while(1) {
+                // Random number between 1048576 (0x100000) and 16777215 (0xFFFFFF)
+                var did = (1048576 + Math.floor(Math.random()*15728639)).toString(16);
+                // Check that it isn't already in use
+                if (!listing.lookup_did(did)) {
+                    return did;
+                }
+            }
+        },
+        validate: function (value) { return false; },           // Immutable
+        update: function (id, field, value) { return false; }   // Immutable
+    },
+    "ip4": {
+        default: function () { return ""; },
+        validate: function (value) {
+            return true;                // TODO IPv4 validation
+        },
+        update: listing.update_internal_field,
+    },
+    "ip6": {
+        default: function () { return ""; },
+        validate: function (value) {
+            return true;                // TODO IPv4 validation
+        },
+        update: listing.update_internal_field,
+    },
+    "date": {
+        default: function () { return 0; },
+        validate: function (value) {
+            return (typeof value === typeof 0 && value >= 0);
+        },
+        update: function (id) {
+            listing.model[id]["date"] = (new Date()).getTime();
+            listing.sync = true;
+        },
+    }
+};
+
+// Each field record has the following methods:
+//   default()  - return a default value
+//   validate() - validate storage format of field
+//   update()   - update the field
+//   parse()    - convert the "on-the-wire" data into the storage format
+listing.valid_fields = {
+    "st": {     // Status
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (typeof value === typeof 0 && value >= 0 && value < 2);
+        },
+        update: listing.update_field,
+    },
+    "aiv": {    // Announce interval (seconds)
+        default: function () { return 900; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (typeof value === typeof 0 && value >= 0 && value < 2);
+        },
+        update: listing.update_field,
+    },
+    "type": {   // Server type
+        default: function () { return "std"; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            for (var n in av_type) {
+                if (value === av_type[n]) { return true; }
+            }
+            return false;
+        },
+        update: listing.update_field,
+    },
+    "dns": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        // Todo: validate should take a callback to execute on success
+        // to permit async validation (e.g. dns lookups)
+        validate: function (value, id, callback) {
+            // TODO it should be an error condition if the dns name supplied does not
+            // resolve to at least one v4/v6 address (indicates hostname is invalid)
+            // Validate domain name/IP address here
+            // TODO validity of this field should influence the server_valid internal field, which then influences display of servers/appearance in server listing
+            if (checkipv6(value) || checkipv4(value) || checkdomain(value)) {
+                if (callback === undefined) { return true; }
+                sys.puts("dns running calback");
+                callback(id, value);
+            } else {
+                // Invalid
+                return false;
+            }
+        },
+        update: function (id, field, value) {
+            // TODO
+            // Assume that ID has been checked
+            return this.validate(value, id, function (id, value) {
+                listing.model[id]["dns"] = value;
+                if (checkipv6(value)) {
+                    listing.update_internal_field(id, "ip4", "");
+                    listing.update_internal_field(id, "ip6", value);
+                } else if (checkipv4(value)) {
+                    listing.update_internal_field(id, "ip4", value);
+                    listing.update_internal_field(id, "ip6", "");
+                } else {
+                    dns.resolve6(value, function (err, addresses) {
+                        // if (err) throw err;
+                        if (!err && addresses.length > 0) {
+                            // TODO - Handle multiple addresses better?
+                            listing.update_internal_field(id, "ip6", addresses[0]);
+                        } else {
+                            listing.update_internal_field(id, "ip6", "");
+                        }
+                        dns.resolve4(value, function (err, addresses) {
+                            // if (err) throw err;
+                            if (!err && addresses.length > 0) {
+                                // TODO - Handle multiple addresses better?
+                                listing.update_internal_field(id, "ip4", addresses[0]);
+                            } else {
+                                listing.update_internal_field(id, "ip4", "");
+                            }
+                        });
+                    });
+                }
+                // Update done
+                listing.sync = true;
+                return true;
+            });
+        },
+    },
+    "port": {
+        default: function () { return 13353 },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 65536);
+        },
+        update: listing.update_field,
+    },
+    "rev": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return (typeof value === typeof "str" && value.length < 100);
+        },
+        update: listing.update_field,
+    },
+    "pak": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return (typeof value === typeof "str" && value.length < 100);
+        },
+        update: listing.update_field,
+    },
+    "name": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return (typeof value === typeof "str" && value.length < 200);
+        },
+        update: listing.update_field,
+    },
+    "email": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return true;                        // TODO (email)
+        },
+        update: listing.update_field,
+    },
+    "pakurl": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return true;                        // TODO (url)
+        },
+        update: listing.update_field,
+    },
+    "addurl": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return true;                        // TODO (url)
+        },
+        update: listing.update_field,
+    },
+    "infurl": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return true;                        // TODO (url)
+        },
+        update: listing.update_field,
+    },
+    "comments": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return (typeof value === typeof "str" && value.length < 2000);
+        },
+        update: listing.update_field,
+    },
+    "name": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return (typeof value === typeof "str" && value.length < 100);
+        },
+        update: listing.update_field,
+    },
+    "time": {
+        default: function () { return {"yr": 1, "mn": 0}; },
+        parse: function(rawvalue) {
+            // Split by "," and store in dict with two fields
+            return {"mn": rawvalue.toString().split(",")[0],
+                    "yr": rawvalue.toString().split(",")[1]};
+        },
+        validate: function (value) {
+            if (typeof value === typeof {}) {
+                if (value.hasOwnProperty("yr") && typeof value["yr"] === typeof 0 && value["yr"] > 0) {
+                    if (value.hasOwnProperty("mn") && typeof value["mn"] === typeof 0 && value["mn"] >= 0 && value["mn"] < 12) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        },
+        update: listing.update_field,
+    },
+    "size": {
+        default: function () { return {"x": 0, "y": 0}; },
+        parse: function(rawvalue) {
+            // Split by "," and store in dict with two fields
+            return {"x": rawvalue.toString().split(",")[0],
+                    "y": rawvalue.toString().split(",")[1]};
+        },
+        validate: function (value) {
+            if (typeof value === typeof {}) {
+                if (value.hasOwnProperty("x") && typeof value["x"] === typeof 0 && value["x"] > 0) {
+                    if (value.hasOwnProperty("y") && typeof value["y"] === typeof 0 && value["y"] > 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        },
+        update: listing.update_field,
+    },
+    "players": {
+        default: function () { return [
+                {"p":  0, "a": 0, "l": 0},
+                {"p":  1, "a": 0, "l": 0},
+                {"p":  2, "a": 0, "l": 0},
+                {"p":  3, "a": 0, "l": 0},
+                {"p":  4, "a": 0, "l": 0},
+                {"p":  5, "a": 0, "l": 0},
+                {"p":  6, "a": 0, "l": 0},
+                {"p":  7, "a": 0, "l": 0},
+                {"p":  8, "a": 0, "l": 0},
+                {"p":  9, "a": 0, "l": 0},
+                {"p": 10, "a": 0, "l": 0},
+                {"p": 11, "a": 0, "l": 0},
+                {"p": 12, "a": 0, "l": 0},
+                {"p": 13, "a": 0, "l": 0},
+                {"p": 14, "a": 0, "l": 0},
+                {"p": 15, "a": 0, "l": 0}
+            ]; },
+        // If additional fields added to spec they go here
+        suboutputfields: ["p", "a", "l"],
+        parse: function (rawvalue) {
+            // Raw value looks like:
+            // 0,0,0;1,0,0;2,0,0;3,0,0;4,0,0;...
+            // Split by comma, then parse into dict set
+            // If this fails at any point return false
+            if (typeof rawvalue === typeof "") {
+                var output = [];
+                var vals = rawvalue.split(";");
+                for (var i=0; i<vals.length; i++) {
+                    var suboutput = {};
+                    var subvals = vals[i].split(",");
+                    for (var j=0; j<subvals.length; j++) {
+                        if (j < this.suboutputfields.length - 1) {
+                            suboutput[this.suboutputfields[j]] = parseInt(subvals[j]);
+                        }
+                    }
+                    output.push(suboutput);
+                }
+                return output;
+            }
+            return false;
+        },
+        validate: function (value) {
+            // Must be an array + must contain exactly 16 items
+            if (typeof value === typeof [] && value.length === 16) {
+                // Each dict must contain the fields specified in player_fields
+                for (var i=0; i<value.length; i++) {
+                    for (var j=0; j<this.suboutputfields.length; j++) {
+                        if (!value[i].hasOwnProperty(this.suboutputfields[j])) {
+                            return false;
+                        }
+                    }
+                    // Each field must conform to its own spec
+                    // TODO - these would be better stored as validator functions in the suboutputfields object for flexible validation
+                        // "p" field must be number > 0
+                        // "a" field must be number 0 or 1
+                        // "l" field must be number 0 or 1
+                    if (value[i]["p"] < 0) {
+                        return false;
+                    }
+                    if (value[i]["a"] < 0 || value[i]["a"] > 1) {
+                        return false;
+                    }
+                    if (value[i]["l"] < 0 || value[i]["l"] > 1) {
+                        return false;
+                    }
+                }
+                // If we got this far it must be valid
+                return true;
+            }
+            return false;
+        },
+        update: function (id, field, value) {
+                                                    // TODO
+            // Data expected in form
+            var candidate = this.parse(value);
+            if (this.validate(candidate)) {
+                listing.model[id]["players"] = candidate;
+                listing.sync = true;
+                return true;
+            }
+            return false;
+        }
+    },
+    "clients": {
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 16);
+        },
+        update: listing.update_field,
+    },
+    "towns": {
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0);
+        },
+        update: listing.update_field,
+    },
+    "citizens": {
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0);
+        },
+        update: listing.update_field,
+    },
+    "factories": {
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0);
+        },
+        update: listing.update_field,
+    },
+    "convoys": {
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0);
+        },
+        update: listing.update_field,
+    },
+    "stops": {
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value > 0);
+        },
+        update: listing.update_field,
     }
 };
 
@@ -710,15 +821,7 @@ post("/announce", function (req, res) {
             {
                 if (qs.hasOwnProperty(key) && key !== "id") {
                     sys.puts("post data - " + key + ": " + qs[key]);
-                    // Process args
-                    // Special case for player info
-                    if (key === "pstatus") {
-                        listing.update_pstatus(qs["id"], key, qs[key]);
-                    } else if (key === "plock") {
-                        listing.update_plock(qs["id"], key, qs[key]);
-                    } else {
-                        listing.update_field(qs["id"], key, qs[key]);
-                    }
+                    listing.validate_field(qs["id"], key, qs[key]);
                 }
             }
             // Set date of this request, to keep track of server status in future
@@ -879,7 +982,7 @@ post("/add", function (req, res) {
 
         // Set up redirect url
         // Set game type (standard or experimental)
-        listing.update_field(newid, "type", qs["type"]);
+        listing.validate_field(newid, "type", qs["type"]);
         var newloc = "/manage?warn=1&lang=" + qs["lang"] + "&id=" + newid;
 
 
@@ -961,7 +1064,7 @@ post("/manage", function (req, res) {
                 if (qs.hasOwnProperty(key)) {
                     sys.puts("post data - " + key + ": " + qs[key]);
                     // Process args
-                    listing.update_field(qs["id"], key, qs[key]);
+                    listing.validate_field(qs["id"], key, qs[key]);
                 }
             }
             // Set up redirect URL
