@@ -1,0 +1,200 @@
+/* body */
+body {
+background-color: #DEF0FB;
+
+border: 1px solid #000;
+font-family: Helvetica, sans-serif;
+font-size: 10.5pt;
+}
+
+/* Global */
+a {
+text-decoration: none;
+color: #156597;
+}
+a:hover {
+text-decoration: underline;
+}
+a:visited {
+color: purple;
+}
+
+
+
+/* Clear div */
+.clear_both {
+clear: both;
+}
+
+/* Header & Footer */
+.header {
+position: relative;
+width: 100%;
+height: 105px;
+height: 8em;
+background-color: #FFF;
+background-image: url("simlogo.png");
+background-repeat: no-repeat;
+background-position: bottom left;
+background-position: 10px 100%;
+padding: 0px;
+margin: 0px;
+}
+.header h1 {
+margin: 0;
+padding: 0;
+padding-left: 260px;
+padding-top: 0.6em;
+}
+
+
+.footer {
+background-color: #FFF;
+text-align: center;
+border-top: 1px solid #000;
+padding: 0.3em;
+}
+
+
+
+/* Main navigation */
+.main_nav {
+background-color: #FFF;
+position: absolute;
+padding: 0;
+margin: 0;
+left: 265px;
+bottom: 0;
+padding: 0.2em 0 0.2em 0;
+border-left: 1px solid #000;
+border-right: 1px solid #000;
+border-top: 1px solid #000;
+}
+
+.main_nav ul {
+background-color: #FFF;
+display: block;
+padding: 0;
+margin: 0;
+border: 0;
+
+}
+.main_nav li {
+background-color: #FFF;
+display: inline;
+padding: 0;
+margin: 0;
+border: 0;
+}
+
+.main_nav a {
+padding: 0;
+margin: 0;
+border: 0;
+padding: 0.2em 0.8em 0.2em 0.8em;
+background-color: #DEF0FB;
+text-decoration: none;
+color: #000;
+}
+.main_nav a:hover {
+background-color: #B8DEF7;
+color: #000;
+}
+.main_nav a: {
+
+}
+
+table {
+border-spacing: 0;
+padding: 0;
+margin: 0;
+border-top: 1px solid #000;
+width: 100%;
+background-color: #FFF;
+}
+
+th {
+padding: 0.2em 0 0.2em 0;
+border-spacing: 0;
+margin: 0;
+background-color: #2599E5;
+background-color: #92CCF2;
+border-bottom: 1px solid #000;
+}
+
+td {
+background-color: none;
+background-color: transparent;
+padding: 0.2em 0.4em 0.2em 0.4em;
+}
+
+.r_a {
+background-color: #FAFDFE;
+}
+.r_b {
+background-color: #EAF5FC;
+}
+
+/* Player 255 is the server for admin messages */
+.p_255 {
+color: #778899;
+color: #000;
+}
+
+.p_255 .mess {
+text-align: right;
+}
+/* Player 0 is human (spectator) */
+.p_0 {
+color: rgb(76 113 145);
+}
+/* Player 1 is public service */
+.p_1 {
+color: rgb(125, 125, 125);
+}
+.p_2 {
+color: rgb(37, 86, 167);
+}
+.p_3 {
+color: rgb(161, 134, 5);
+}
+.p_4 {
+color: rgb(134, 48, 18);
+}
+.p_5 {
+color: rgb(53, 101, 18);
+}
+.p_6 {
+color: rgb(0, 130, 118);
+}
+.p_7 {
+color: rgb(116, 37, 156);
+}
+.p_8 {
+color: rgb(107, 69, 0);
+}
+.p_9 {
+color: rgb(135, 28, 92);
+}
+.p_10 {
+color: rgb(68, 99, 45);
+}
+.p_11 {
+color: rgb(110, 69, 58);
+}
+.p_12 {
+color: rgb(20, 33, 139);
+}
+.p_13 {
+color: rgb(93, 70, 110);
+}
+.p_14 {
+color: rgb(117, 58, 42);
+}
+.p_15 {
+color: rgb(54, 120, 81);
+}
+.p_16 {
+color: rgb(128, 0, 0);
+}
+

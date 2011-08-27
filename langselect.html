@@ -1,0 +1,12 @@
+<!--
+# Loop through available translations and display links to select a different one
+-->
+{{#available_lang}}
+{{#cur}}
+<b>{{#translate}}{{name}}{{/translate}}</b>
+{{/cur}}
+{{^cur}}
+
+<a href="{{url}}">{{#translate}}{{name}}{{/translate}}</a>
+{{/cur}}
+{{/available_lang}}

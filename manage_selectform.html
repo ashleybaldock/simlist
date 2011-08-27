@@ -1,0 +1,10 @@
+<div>
+<p>{{#error}}{{#translate}}select_server_id_error{{/translate}}{{/error}}{{^error}}{{#translate}}select_server_id{{/translate}}{{/error}}</p>
+<form name="select_server" action="./manage" method="get">
+
+<input type="text" name="id" />
+<input type="hidden" name="lang" value="{{lang}}" />
+
+<input type="submit" value="Submit" />
+</form>
+</div>

@@ -1,0 +1,129 @@
+<!--
+# Loop through all entries in "listing"
+# Display basic info for all of them
+# If detail() returns true, print detailed information
+-->
+
+<div>
+<table>
+{{#paksets}}
+    <tr>
+        <th colspan="4">{{name}}</th>
+    </tr>
+{{#items}}
+{{#data}}
+    <a name="{{did}}"></a>
+    <tr>
+        <td>{{#translate}}status_{{st}}{{/translate}}</td>
+        <td>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}</td>
+        <td>{{#translate}}servertype_{{type}}{{/translate}}</td>
+        <td>{{#translate}}rev{{/translate}} {{rev}}</td>
+    </tr>
+    <tr>
+        <td>{{#translate}}datetime{{/translate}} {{date}}</td>
+        <td>{{dns}}:{{port}}</td>
+        <td>{{#translate}}pak{{/translate}} {{pak}}</td>
+{{/data}}
+
+{{^detail}}
+{{#data}}
+        <td><a href="./list?lang={{lang}}&detail={{did}}#{{did}}">{{#translate}}show_server_details{{/translate}}</a></td>
+    </tr>
+{{/data}}
+{{/detail}}
+
+{{#detail}}
+{{#data}}
+        <td><a href="./list?lang={{lang}}#{{did}}">{{#translate}}hide_server_detail{{/translate}}</a></td>
+    </tr>
+    <tr valign="top">
+        <td>
+            <table>
+                <tr>
+                    <th colspan="3">{{#translate}}players{{/translate}}</th>
+                </tr>
+{{#players}}
+                <tr>
+                    <td>{{#translate}}p_{{p}}{{/translate}}</td>
+                    <td>{{#translate}}p_active_{{a}}{{/translate}}</td>
+                    <td>{{#translate}}p_locked_{{l}}{{/translate}}</td>
+                </tr>
+{{/players}}
+            </table>
+        </td>
+        <td>
+            <table>
+                <tr>
+                    <th colspan="2">{{#translate}}mapinfo_header{{/translate}}</th>
+                </tr>
+                <tr>
+                    <td>{{#translate}}time{{/translate}}</td><td>{{time}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}size{{/translate}}</td><td>{{size}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}clients{{/translate}}</td><td>{{clients}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}towns{{/translate}}</td><td>{{towns}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}citizens{{/translate}}</td><td>{{citizens}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}factories{{/translate}}</td><td>{{factories}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}convoys{{/translate}}</td><td>{{convoys}}</td>
+                </tr>
+                <tr>
+                    <td>{{#translate}}stops{{/translate}}</td><td>{{stops}}</td>
+                </tr>
+            </table>
+        </td>
+        <td colspan="2">
+            <table>
+                <tr>
+                    <th>{{#translate}}otherinfo_header{{/translate}}</th>
+                </tr>
+                <tr>
+                    <td>{{#ip4}}{{#translate}}reachable_ip4{{/translate}}{{ip4}}{{/ip4}}{{^ip4}}{{#translate}}unreachable_ip4{{/translate}}{{/ip4}}</td>
+                </tr>
+                <tr>
+                    <td>{{#ip6}}{{#translate}}reachable_ip6{{/translate}}{{ip6}}{{/ip6}}{{^ip6}}{{#translate}}unreachable_ip6{{/translate}}{{/ip6}}
+                </tr>
+{{#email}}
+                <tr>
+                    <td><a href="mailto:{{email}}">{{#translate}}email{{/translate}}</a></td>
+                </tr>
+{{/email}}
+{{#pakurl}}
+                <tr>
+                    <td><a href="{{pakurl}}">{{#translate}}pakurl_link{{/translate}}</a></td>
+                </tr>
+{{/pakurl}}
+{{#addurl}}
+                <tr>
+                    <td><a href="{{addurl}}">{{#translate}}addurl_link{{/translate}}</a></td>
+                </tr>
+{{/addurl}}
+{{#infurl}}
+                <tr>
+                    <td><a href="{{infurl}}">{{#translate}}infurl_link{{/translate}}</a></td>
+                </tr>
+{{/infurl}}
+{{#comments}}
+                <tr>
+                    <td>{{#translate}}comments{{/translate}}<br />{{comments}}</td>
+                </tr>
+{{/comments}}
+            </table>
+        </td>
+    </tr>
+{{/data}}
+{{/detail}}
+{{/items}}
+{{/paksets}}
+</table>
+</div>

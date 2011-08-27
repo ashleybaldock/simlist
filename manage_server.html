@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+<title>{{title}}</title>
+<link rel="stylesheet" type="text/css" href="./style.css" />
+<link rel="stylesheet" type="text/css" href="./print.css" media="print" />
+
+</head>
+<body>
+<div class="header">
+    <h1>{{title}}</h1>
+    <div class="main_nav">
+        <ul>
+            <li><a href="./list?lang={{lang}}">{{#translate}}server_listing{{/translate}}</a></li><li><a href="./add?lang={{lang}}">{{#translate}}add_server{{/translate}}</a></li><li class="active"><a href="./manage?lang={{lang}}">{{#translate}}manage_server{{/translate}}</a></li>
+        </ul>
+    </div>
+</div>
+
+<!--
+# Loop through available translations and display links to select a different one
+-->
+{{#available_lang}}
+{{#cur}}
+<b>{{#translate}}{{name}}{{/translate}}</b>
+{{/cur}}
+{{^cur}}
+<a href="./manage?lang={{name}}&id={{id}}">{{#translate}}{{name}}{{/translate}}</a>
+{{/cur}}
+{{/available_lang}}
+
+
+<div>
+<form name="select_server" action="./manage" method="get">
+Enter a Server ID to manage settings<br />
+
+<input type="text" name="id" />
+<input type="hidden" name="lang" value="{{lang}}" />
+
+<input type="submit" value="Submit" />
+</form>
+
+<form name="manage_server" action="./manage" method="post">
+
+Make changes to server settings. Note: Fields marked with an asterisk (*) will be updated automatically by the game.<br />
+
+{{#manage}}
+Name <input type="text" name="name" value="{{name}}" /><br />
+DNS <input type="text" name="ip" value="{{ip}}" />*<br />
+IPv4 <input type="text" name="ip4" value="{{ip4}}" />*<br />
+IPv6 <input type="text" name="ip6" value="{{ip6}}" />* 
+Port <input type="text" name="port" value="{{port}}" />*<br />
+Contact Email <input type="text" name="eml" value="{{eml}}" /><br />
+Game Version <input type="text" name="rev" value="{{rev}}" /><br />
+Pakset <input type="text" name="pak" value="{{pak}}" /><br />
+Pakset URL <input type="text" name="pakurl" value="{{pakurl}}" /><br />
+Addons URL <input type="text" name="addurl" value="{{addurl}}" /><br />
+Info URL <input type="text" name="infurl" value="{{infurl}}" /><br />
+Comments <input type="text" name="comments" value="{{comments}}" /><br />
+Status <input type="radio" name="st" value="1" /> Online <input type="radio" name="st" value="0" /> Offline<br />
+{{/manage}}
+
+<input type="hidden" name="lang" value="{{lang}}" />
+<input type="hidden" name="id" value="{{id}}" />
+
+<input type="submit" value="Submit" />
+
+
+</form>
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+</body>
+</html>
