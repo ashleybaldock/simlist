@@ -1,6 +1,7 @@
 <!--
 # Loop through available translations and display links to select a different one
 -->
+<div class="lang_select">
 {{#available_lang}}
 {{#cur}}
 <b>{{#translate}}{{name}}{{/translate}}</b>
@@ -10,3 +11,4 @@
 <a href="{{url}}">{{#translate}}{{name}}{{/translate}}</a>
 {{/cur}}
 {{/available_lang}}
+</div>

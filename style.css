@@ -57,6 +57,25 @@ padding: 0.3em;
 
 
 
+.lang_select {
+    background-color: #2599E5;
+    color: #FFF;
+    padding: 0.3em;
+    border-top: 1px solid #000;
+    font-size: 8pt;
+    text-align: right;
+}
+.lang_select a {
+    color: #FFF;
+    text-decoration: underline;
+}
+.lang_select a:hover {
+    background-color: #FFF;
+    color: #2599E5;
+    text-decoration: none;
+}
+
+
 /* Main navigation */
 .main_nav {
 background-color: #FFF;
@@ -105,33 +124,69 @@ color: #000;
 }
 
 table {
-border-spacing: 0;
-padding: 0;
-margin: 0;
-border-top: 1px solid #000;
-width: 100%;
-background-color: #FFF;
+    border-spacing: 0;
+    padding: 0;
+    margin: 0;
+    background-color: #FFF;
+    width: 100%;
+}
+table.main {
+    border-top: 1px solid #000;
 }
 
 th {
-padding: 0.2em 0 0.2em 0;
-border-spacing: 0;
-margin: 0;
-background-color: #2599E5;
-background-color: #92CCF2;
-border-bottom: 1px solid #000;
+    padding: 0.2em 0 0.2em 0;
+    border-spacing: 0;
+    margin: 0;
+    background-color: #2599E5;
+    background-color: #92CCF2;
+    border-bottom: 1px solid #000;
+}
+th.pakset_name {
+    text-align: left;
 }
 
 td {
-background-color: none;
-background-color: transparent;
-padding: 0.2em 0.4em 0.2em 0.4em;
+    background-color: none;
+    background-color: transparent;
+    padding: 0.2em 0.4em 0.2em 0.4em;
+}
+td.status_0 {
+    background-color: #B00;
+}
+td.status_1 {
+    background-color: #0B0;
+}
+tr.listing_upper td {
+    padding-top: 0.5em;
+}
+tr.listing_lower td {
+}
+tr.end_listing td {
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid #000;
 }
 
-.r_a {
+tr.end_listing td table td {
+    padding-bottom: 0.2em;
+    border-bottom: 0;
+}
+
+table.playerinfo {
+    border: 1px solid #000;
+}
+table.mapinfo {
+    border: 1px solid #000;
+}
+table.otherinfo {
+    border: 1px solid #000;
+}
+
+
+.r_a, .r_0, .r_2, .r_4, .r_6, .r_8, .r_10, .r_12, .r_14, .r_16 {
 background-color: #FAFDFE;
 }
-.r_b {
+.r_b, .r_1, .r_3, .r_5, .r_7, .r_9, .r_11, .r_13, .r_15 {
 background-color: #EAF5FC;
 }
 

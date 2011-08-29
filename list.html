@@ -5,24 +5,26 @@
 -->
 
 <div>
-<table>
+<table class="main">
 {{#paksets}}
     <tr>
-        <th colspan="4">{{name}}</th>
+        <th class="pakset_name" colspan="4">{{name}}</th>
     </tr>
 {{#items}}
 {{#data}}
     <a name="{{did}}"></a>
-    <tr>
-        <td>{{#translate}}status_{{st}}{{/translate}}</td>
+    <tr class="listing_upper">
+        <td class="status_{{st}}">{{#translate}}status_{{st}}{{/translate}}</td>
         <td>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}</td>
         <td>{{#translate}}servertype_{{type}}{{/translate}}</td>
-        <td>{{#translate}}rev{{/translate}} {{rev}}</td>
+        <td>{{#translate}}rev{{/translate}} {{#rev}}{{rev}}{{/rev}}{{^rev}}&lt;No data&gt;{{/rev}}</td>
     </tr>
-    <tr>
+{{/data}}
+    <tr class="listing_lower{{^detail}} end_listing{{/detail}}">
+{{#data}}
         <td>{{#translate}}datetime{{/translate}} {{date}}</td>
-        <td>{{dns}}:{{port}}</td>
-        <td>{{#translate}}pak{{/translate}} {{pak}}</td>
+        <td>{{#dns}}{{dns}}{{/dns}}{{^dns}}&lt;No DNS name set&gt;{{/dns}}:{{port}}</td>
+        <td>{{#translate}}pak{{/translate}} {{#pak}}{{pak}}{{/pak}}{{^pak}}&lt;No data&gt;{{/pak}}</td>
 {{/data}}
 
 {{^detail}}
@@ -36,88 +38,84 @@
 {{#data}}
         <td><a href="./list?lang={{lang}}#{{did}}">{{#translate}}hide_server_detail{{/translate}}</a></td>
     </tr>
-    <tr valign="top">
-        <td>
+    <tr class="end_listing">
+        <td colspan="4">
             <table>
+                <tr valign="top">
+                    <td>
+            <table class="mapinfo">
+                <tr>
+                    <th colspan="2">{{#translate}}mapinfo_header{{/translate}}</th>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#translate}}time{{/translate}}</td><td>{{#time}}{{mn}}, {{yr}}{{/time}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#translate}}size{{/translate}}</td><td>{{#size}}{{x}}x{{y}}{{/size}}</td>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#translate}}clients{{/translate}}</td><td>{{clients}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#translate}}towns{{/translate}}</td><td>{{towns}}</td>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#translate}}citizens{{/translate}}</td><td>{{citizens}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#translate}}factories{{/translate}}</td><td>{{factories}}</td>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#translate}}convoys{{/translate}}</td><td>{{convoys}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#translate}}stops{{/translate}}</td><td>{{stops}}</td>
+                </tr>
+            </table>
+                    </td>
+                    <td>
+            <table class="otherinfo">
+                <tr>
+                    <th>{{#translate}}otherinfo_header{{/translate}}</th>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#ip4}}{{#translate}}reachable_ip4{{/translate}}{{ip4}}{{/ip4}}{{^ip4}}{{#translate}}unreachable_ip4{{/translate}}{{/ip4}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#ip6}}{{#translate}}reachable_ip6{{/translate}}{{ip6}}{{/ip6}}{{^ip6}}{{#translate}}unreachable_ip6{{/translate}}{{/ip6}}
+                </tr>
+                <tr class="r_a">
+                    <td>{{#email}}<a href="mailto:{{email}}">{{#translate}}email{{/translate}}</a>{{/email}}{{^email}}&lt;No maintainer email set&gt;{{/email}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#pakurl}}<a href="{{pakurl}}">{{#translate}}pakurl_link{{/translate}}</a>{{/pakurl}}{{^pakurl}}&lt;No pakset URL set&gt;{{/pakurl}}</td>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#addurl}}<a href="{{addurl}}">{{#translate}}addurl_link{{/translate}}</a>{{/addurl}}{{^addurl}}&lt;No addons URL set&gt;{{/addurl}}</td>
+                </tr>
+                <tr class="r_b">
+                    <td>{{#infurl}}<a href="{{infurl}}">{{#translate}}infurl_link{{/translate}}</a>{{/infurl}}{{^infurl}}&lt;No info URL set&gt;{{/infurl}}</td>
+                </tr>
+                <tr class="r_a">
+                    <td>{{#translate}}comments{{/translate}}<br />{{#comments}}{{comments}}{{/comments}}{{^comments}}&lt;No comments set&gt;{{/comments}}</td>
+                </tr>
+            </table>
+                    </td>
+                    <td>
+            <table class="playerinfo">
                 <tr>
                     <th colspan="3">{{#translate}}players{{/translate}}</th>
                 </tr>
 {{#players}}
-                <tr>
-                    <td>{{#translate}}p_{{p}}{{/translate}}</td>
+                <tr class="r_{{p}}">
+                    <td class="p_{{p}}">{{#translate}}p_{{p}}{{/translate}}</td>
                     <td>{{#translate}}p_active_{{a}}{{/translate}}</td>
                     <td>{{#translate}}p_locked_{{l}}{{/translate}}</td>
                 </tr>
 {{/players}}
             </table>
-        </td>
-        <td>
-            <table>
-                <tr>
-                    <th colspan="2">{{#translate}}mapinfo_header{{/translate}}</th>
+                    </td>
                 </tr>
-                <tr>
-                    <td>{{#translate}}time{{/translate}}</td><td>{{#time}}{{mn}}, {{yr}}{{/time}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}size{{/translate}}</td><td>{{#size}}{{x}}x{{y}}{{/size}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}clients{{/translate}}</td><td>{{clients}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}towns{{/translate}}</td><td>{{towns}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}citizens{{/translate}}</td><td>{{citizens}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}factories{{/translate}}</td><td>{{factories}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}convoys{{/translate}}</td><td>{{convoys}}</td>
-                </tr>
-                <tr>
-                    <td>{{#translate}}stops{{/translate}}</td><td>{{stops}}</td>
-                </tr>
-            </table>
-        </td>
-        <td colspan="2">
-            <table>
-                <tr>
-                    <th>{{#translate}}otherinfo_header{{/translate}}</th>
-                </tr>
-                <tr>
-                    <td>{{#ip4}}{{#translate}}reachable_ip4{{/translate}}{{ip4}}{{/ip4}}{{^ip4}}{{#translate}}unreachable_ip4{{/translate}}{{/ip4}}</td>
-                </tr>
-                <tr>
-                    <td>{{#ip6}}{{#translate}}reachable_ip6{{/translate}}{{ip6}}{{/ip6}}{{^ip6}}{{#translate}}unreachable_ip6{{/translate}}{{/ip6}}
-                </tr>
-{{#email}}
-                <tr>
-                    <td><a href="mailto:{{email}}">{{#translate}}email{{/translate}}</a></td>
-                </tr>
-{{/email}}
-{{#pakurl}}
-                <tr>
-                    <td><a href="{{pakurl}}">{{#translate}}pakurl_link{{/translate}}</a></td>
-                </tr>
-{{/pakurl}}
-{{#addurl}}
-                <tr>
-                    <td><a href="{{addurl}}">{{#translate}}addurl_link{{/translate}}</a></td>
-                </tr>
-{{/addurl}}
-{{#infurl}}
-                <tr>
-                    <td><a href="{{infurl}}">{{#translate}}infurl_link{{/translate}}</a></td>
-                </tr>
-{{/infurl}}
-{{#comments}}
-                <tr>
-                    <td>{{#translate}}comments{{/translate}}<br />{{comments}}</td>
-                </tr>
-{{/comments}}
             </table>
         </td>
     </tr>
