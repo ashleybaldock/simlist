@@ -133,6 +133,29 @@ table {
 table.main {
     border-top: 1px solid #000;
 }
+.manageform table {
+    border: 1px solid #000;
+}
+.manageform {
+    background-color: #FFF;
+    padding-left: 10%;
+    padding-right: 10%;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+
+.bb {
+    width: 100%;
+    box-sizing: border-box; /* css3 rec */
+    -moz-box-sizing: border-box; /* ff2 */
+    -ms-box-sizing: border-box; /* ie8 */
+    -webkit-box-sizing: border-box; /* safari3 */
+    -khtml-box-sizing: border-box; /* konqueror */
+}
+
+td.footnote {
+    font-size: smaller;
+}
 
 th {
     padding: 0.2em 0 0.2em 0;
@@ -152,10 +175,10 @@ td {
     padding: 0.2em 0.4em 0.2em 0.4em;
 }
 td.status_0 {
-    background-color: #B00;
+    background-color: #FF5E5E;
 }
 td.status_1 {
-    background-color: #0B0;
+    background-color: #56E356;
 }
 tr.listing_upper td {
     padding-top: 0.5em;

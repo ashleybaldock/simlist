@@ -1,5 +1,9 @@
-HOST = null; // localhost
-PORT = 8001;
+HOST = null;                            // Server listening IP (or null for all)
+PORT = 8001;                            // Server listing port
+ANNOUNCE_MULTIPLIER = 2;                // Number of server announce intervals before server marked offline
+STATUS_CHECK_INTERVAL = 60;             // Interval between checks of server status
+SYNC_FILE = "/var/simlist/listing";     // File to write out internal data model to
+SYNC_INTERVAL = 30;                     // Sync internal data model to disk every XX seconds, default 30
 
 // when the daemon started
 var starttime = (new Date()).getTime();
@@ -9,6 +13,50 @@ var mem = process.memoryUsage();
 setInterval(function () {
     mem = process.memoryUsage();
 }, 10*1000);
+
+
+var status_monitor;         // timeoutId for the status checks
+var status_check = function () {
+    sys.puts("Checking server statuses");
+    // Check the last report date of all listed servers against the current date with respect to their announce interval, any which haven't been heard from in ANNOUNCE_MULTIPLIER times the interval should be set to offline status
+    var cdate = (new Date()).getTime();
+    for (var key in listing.model) {
+        if (listing.model.hasOwnProperty(key) && listing.model[key]["st"] > 0) {
+            sys.puts("Checking server: " + key + " aiv: " + listing.model[key]["aiv"]);
+            var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * ANNOUNCE_MULTIPLIER;
+            sys.puts("cdate:      " + cdate + ", (" + cdate/1000 + ")");
+            sys.puts("expiredate: " + expiredate + ", (" + expiredate/1000 + ")");
+            sys.puts("difference: " + (cdate - expiredate));
+            if (cdate > expiredate) {
+                sys.puts("Setting server: " + key + " to offline");
+                listing.model[key]["st"] = 0;
+            }
+        }
+    }
+    status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);
+};
+
+
+var sync_monitor;           // timeoutId for db file sync
+var sync_check = function () {
+    sys.puts("Checking sync status");
+    // Check value of listing.sync, if true we should sync the current state of the listing to file (JSON.stringify) and set listing.sync to false
+    if (listing.sync) {
+        listing.sync = false;
+        var output = JSON.stringify(listing.model);
+        fs.writeFile(SYNC_FILE, output, function (err) {
+            if (err) {
+                sys.puts("Warning: Unable to sync model to file!");
+                listing.sync = true;
+                // throw err;
+            } else {
+                sys.puts("Sync complete");
+            }
+            // Schedule next check
+            sync_monitor = setTimeout(sync_check, SYNC_INTERVAL*1000);
+        });
+    }
+};
 
 
 var mustache = require("/usr/local/bin/nodemodules/mustache");
@@ -23,7 +71,7 @@ DEBUG = false;
 // Set up available languages/formats
 var av_lang = ["en", "de", "fr"];
 var av_formats = ["html", "csv"];
-var av_type = ["std", "ex"];
+var av_type = ["std", "exp"];
 
 
 // Load all templates
@@ -99,6 +147,7 @@ var checkdomain = function (str) {
 
 
 var listing = {
+    sync: false,
 
     // Access methods
     lookup_id: function (lookupid) {
@@ -131,12 +180,47 @@ var listing = {
         return new_server["id"];
     },
 
-    write: function () {
-        // Write listings out to file
-    },
-
     read: function () {
-        // Read listings in from file (load)
+        // Read listings in from file (load) (synchronous)
+        var input = fs.readFileSync(SYNC_FILE);
+        if (input.length > 0) {
+            // Pass file contents through JSON
+            var testlist = JSON.parse(input);
+        } else {
+            var testlist = {};
+        }
+        // Validate all properties using their validator functions to ensure loaded data isn't corrupt
+        this.model = {};
+
+        // For each ID record
+        for (var key in testlist) {
+            // Check ID is valid (checks for duplicates as part of validate())
+            if (this.internal_fields["id"].validate(testlist[key]) && testlist[key]["id"] && this.internal_fields["id"].validate(testlist[key]["id"]) && testlist[key]["id"] === key) {
+                // Must be a DID field, must be valid (+ unique)
+                if (testlist[key]["did"] && this.internal_fields["did"].validate(testlist[key]["did"])) {
+                    // Add to model
+                    this.model[key] = {"id": key, "did": testlist[key]["did"]};
+                    // Must be a date field, must be valid
+                    if (testlist[key]["date"] && this.internal_fields["date"].validate(testlist[key]["date"])) {
+                        this.model[key]["date"] = testlist[key]["date"];
+                    } else {
+                        this.model[key]["date"] = this.internal_fields["date"].default();
+                    }
+                    // Then check all in valid_fields, and use either value or default
+                    for (var vkey in this.valid_fields) {
+                        if (this.valid_fields.hasOwnProperty(vkey)) {
+                            if (testlist[key].hasOwnProperty(vkey) && this.valid_fields[vkey].validate(testlist[key][vkey])) {
+                                this.model[key][vkey] = testlist[key][vkey];
+                            } else {
+                                // Use default
+                                this.model[key][vkey] = this.valid_fields[vkey].default();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Only add valid fields to the active model by copying them over
     },
 
     filter: function (field, value, set) {
@@ -146,8 +230,7 @@ var listing = {
 
     update_datestamp: function (id) {
         // Set datestamp of specified ID to now()
-        listing.update_internal_field(id, "date", Date.now());
-        listing.valid_fields["date"].update(id);
+        listing.internal_fields["date"].update(id);
         return true;
     },
 
@@ -233,7 +316,7 @@ listing.internal_fields = {
                 }
             }
         },
-        validate: function (value) { return false; },           // Immutable
+        validate: function (value) { return false; },           // TODO
         update: function (id, field, value) { return false; }   // Immutable
     },
     "did": {
@@ -247,7 +330,7 @@ listing.internal_fields = {
                 }
             }
         },
-        validate: function (value) { return false; },           // Immutable
+        validate: function (value) { return false; },           // TODO
         update: function (id, field, value) { return false; }   // Immutable
     },
     "ip4": {
@@ -294,7 +377,7 @@ listing.valid_fields = {
         default: function () { return 900; },
         parse: function(rawvalue) { return parseInt(rawvalue); },
         validate: function (value) {
-            return (typeof value === typeof 0 && value >= 0 && value < 2);
+            return (typeof value === typeof 0 && value >= 30);
         },
         update: listing.update_field,
     },
@@ -449,10 +532,11 @@ listing.valid_fields = {
         default: function () { return {"yr": 1, "mn": 0}; },
         parse: function(rawvalue) {
             // Split by "," and store in dict with two fields
-            return {"mn": rawvalue.toString().split(",")[0],
-                    "yr": rawvalue.toString().split(",")[1]};
+            return {"mn": parseInt(rawvalue.toString().split(",")[0]),
+                    "yr": parseInt(rawvalue.toString().split(",")[1])};
         },
         validate: function (value) {
+            sys.puts(JSON.stringify(value));
             if (typeof value === typeof {}) {
                 if (value.hasOwnProperty("yr") && typeof value["yr"] === typeof 0 && value["yr"] > 0) {
                     if (value.hasOwnProperty("mn") && typeof value["mn"] === typeof 0 && value["mn"] >= 0 && value["mn"] < 12) {
@@ -468,10 +552,11 @@ listing.valid_fields = {
         default: function () { return {"x": 0, "y": 0}; },
         parse: function(rawvalue) {
             // Split by "," and store in dict with two fields
-            return {"x": rawvalue.toString().split(",")[0],
-                    "y": rawvalue.toString().split(",")[1]};
+            return {"x": parseInt(rawvalue.toString().split(",")[0]),
+                    "y": parseInt(rawvalue.toString().split(",")[1])};
         },
         validate: function (value) {
+            sys.puts(JSON.stringify(value));
             if (typeof value === typeof {}) {
                 if (value.hasOwnProperty("x") && typeof value["x"] === typeof 0 && value["x"] > 0) {
                     if (value.hasOwnProperty("y") && typeof value["y"] === typeof 0 && value["y"] > 0) {
@@ -512,11 +597,11 @@ listing.valid_fields = {
             if (typeof rawvalue === typeof "") {
                 var output = [];
                 var vals = rawvalue.split(";");
-                for (var i=0; i<vals.length; i++) {
+                for (var i=0; i<16; i++) {
                     var suboutput = {};
                     var subvals = vals[i].split(",");
                     for (var j=0; j<subvals.length; j++) {
-                        if (j < this.suboutputfields.length - 1) {
+                        if (j < this.suboutputfields.length) {
                             suboutput[this.suboutputfields[j]] = parseInt(subvals[j]);
                         }
                     }
@@ -527,6 +612,7 @@ listing.valid_fields = {
             return false;
         },
         validate: function (value) {
+            sys.puts(JSON.stringify(value));
             // Must be an array + must contain exactly 16 items
             if (typeof value === typeof [] && value.length === 16) {
                 // Each dict must contain the fields specified in player_fields
@@ -622,50 +708,32 @@ listing.valid_fields = {
 
 
 
-function extname (path) {
-    var index = path.lastIndexOf(".");
-    return index < 0 ? "" : path.substring(index);
-}
-
-var staticHandler = function (filename) {
-    var body, headers;
-    var content_type = mime.lookupExtension(extname(filename));
-
-    function loadResponseData(callback) {
-        if (body && headers && !DEBUG) {
-            callback();
-            return;
-        }
-
-        sys.puts("GET " + filename);
-        fs.readFile(filename, function (err, data) {
-            if (err) {
-                sys.puts("Error loading " + filename);
-            } else {
-                body = data;
-                headers = { "Content-Type": content_type , "Content-Length": body.length };
-                if (!DEBUG) headers["Cache-Control"] = "public";
-                callback();
-            }
-        });
-    }
+var redirect_handler_perm = function (filename) {
+    var newloc = filename;
+    var msg = "Redirecting you to: <a href=\"" + newloc + "\">" + newloc + "</a>";
+    var headers = {"Location": newloc,
+        "Content-Type": "text/html",
+        "Content-Length": msg.length};
 
     return function (req, res) {
-        loadResponseData(function () {
-            res.writeHead(200, headers);
-            res.end(req.method === "HEAD" ? "" : body);
-        });
+        res.writeHead(301, headers);
+        res.end(msg);
     }
 };
 
-var mime = {
+var static_handler = function (filename) {
     // returns MIME type for extension, or fallback, or octet-steam
-    lookupExtension : function(ext, fallback) {
-        return mime.TYPES[ext.toLowerCase()] || fallback || 'application/octet-stream';
-    },
+    var mimelookup = function(ext, fallback) {
+        return mimetypes[ext.toLowerCase()] || fallback || "application/octet-stream";
+    };
+
+    var extname = function (path) {
+        var index = path.lastIndexOf(".");
+        return index < 0 ? "" : path.substring(index);
+    };
 
     // List of mime-types we are likely to use
-    TYPES : {
+    var mimetypes = {
         ".css"  : "text/css",
         ".gif"  : "image/gif",
         ".html" : "text/html",
@@ -677,6 +745,37 @@ var mime = {
         ".mime" : "message/rfc822",
         ".png"  : "image/png",
         ".xml"  : "application/xml"
+    };
+
+    var body, headers;
+    var content_type = mimelookup(extname(filename));
+
+    function load_response_data(callback) {
+        if (body && headers && !DEBUG) {
+            callback();
+            return;
+        }
+
+        sys.puts("GET " + filename);
+        fs.readFile(filename, function (err, data) {
+            if (err) {
+                sys.puts("Error loading " + filename);
+            } else {
+                body = data;
+                headers = {"Content-Type": content_type, "Content-Length": body.length};
+                if (!DEBUG) {
+                    headers["Cache-Control"] = "public";
+                }
+                callback();
+            }
+        });
+    }
+
+    return function (req, res) {
+        load_response_data(function () {
+            res.writeHead(200, headers);
+            res.end(req.method === "HEAD" ? "" : body);
+        });
     }
 };
 
@@ -686,9 +785,9 @@ var mime = {
 // Dynamic URL handlers
 
 // Redirect to /list
-get("/", staticHandler("index.html"));
-get("/style.css", staticHandler("style.css"));
-get("/simlogo.png", staticHandler("simlogo.png"));
+get("/", redirect_handler_perm("/list"));
+get("/style.css", static_handler("style.css"));
+get("/simlogo.png", static_handler("simlogo.png"));
 
 
 // Map available languages into object for formatting page template
@@ -765,7 +864,7 @@ var translate = function() {
         addurl_link: "Download addons needed on this server",
         infurl_link: "Further information about this server",
         servertype_std: "Simutrans Standard",
-        servertype_ex: "Simutrans Experimental",
+        servertype_exp: "Simutrans Experimental",
         comments: "Comments:",
         clients: "Connected clients:",
         towns: "Towns:",
@@ -773,6 +872,25 @@ var translate = function() {
         factories: "Factories:",
         convoys: "Vehicles:",
         stops: "Stops:",
+
+        manageform_header: "Make changes to server settings",
+        manageform_explain1: "This field will be updated automatically by the game.",
+        manageform_explain2: "IP addresses are determined automatically from the server DNS/IP address field.",
+        manageform_name: "Listing name",
+        manageform_dns: "DNS name or IP address",
+        manageform_ip4: "IPv4 address",
+        manageform_ip6: "IPv6 address",
+        manageform_port: "Server port",
+        manageform_rev: "Simutrans version",
+        manageform_pak: "Pakset details",
+        manageform_email: "Manager email",
+        manageform_pakurl: "Pakset URL",
+        manageform_addurl: "Addons URL",
+        manageform_infurl: "Info URL",
+        manageform_comments: "Other comments",
+        manageform_setoffline: "Set server offline",
+        manageform_submit: "Submit changes",
+
         select_server_id: "Enter a Server ID to manage settings",
         select_server_id_error: "Sorry, the ID specified is not registered. Please enter a valid ID or select 'Add Server' to register a new one."
     };
@@ -785,15 +903,7 @@ var translate = function() {
     };
 };
 
-var format_player = function() {
-    return function(text, render) {
-        if (text === "1") {
-            return render("Yes");
-        } else {
-            return render("No");
-        }
-    };
-};
+
 
 
 // /announce
@@ -886,9 +996,11 @@ get("/list", function (req, res) {
 
         // Return html formatted listing of servers
         res.write(mustache.to_html(templates["list.html"],
-            {lang: qs["lang"], translate: translate, paksets: paksets,
-                format_player: format_player, }));
+            {lang: qs["lang"], translate: translate, paksets: paksets}));
 
+        res.write(mustache.to_html(templates["langselect.html"],
+            {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
+        ));
         // Write the footer and close the request
         res.write(mustache.to_html(templates["footer.html"], {}));
         res.end();
@@ -932,7 +1044,7 @@ get("/add", function (req, res) {
         qs["lang"] = "en";  // Default to English
     }
 
-    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.writeHead(200, {"Content-Type": "text/html"});
 
     // Write header
     res.write(mustache.to_html(templates["header.html"],
@@ -951,6 +1063,9 @@ get("/add", function (req, res) {
     res.write(mustache.to_html(templates["add_form.html"],
         {lang: qs["lang"], translate: translate}));
 
+    res.write(mustache.to_html(templates["langselect.html"],
+        {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
+    ));
     // Write the footer and close the request
     res.write(mustache.to_html(templates["footer.html"], {}));
     res.end();
@@ -987,7 +1102,7 @@ post("/add", function (req, res) {
 
 
         var msg = "Redirecting you to: " + newloc;
-        res.writeHead(303, {"location": newloc, "Content-Type": "text/html", "Content-Length": msg.length});
+        res.writeHead(303, {"Location": newloc, "Content-Type": "text/html", "Content-Length": msg.length});
         res.end(msg);
     });
 });
@@ -1037,6 +1152,9 @@ get("/manage", function (req, res) {
             {lang: qs["lang"], translate: translate, error: false}));
     }
 
+    res.write(mustache.to_html(templates["langselect.html"],
+        {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
+    ));
     // Write the footer and close the request
     res.write(mustache.to_html(templates["footer.html"],
         {}));
@@ -1080,6 +1198,13 @@ post("/manage", function (req, res) {
         }
     });
 });
+
+// Read model from file
+listing.read();
+
+// Set up monitor processes
+status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);
+sync_monitor   = setTimeout(sync_check, SYNC_INTERVAL*1000);
 
 listen(Number(process.env.PORT || PORT), HOST);
 

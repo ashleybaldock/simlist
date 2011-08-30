@@ -11,9 +11,14 @@
 
 <form name="announce" action="./announce" method="post">
 
+ID: <input type="text" name="id" value="" /><br /><br />
+
+Interval: <input type="text" name="aiv" value="30" /><br /><br />
+
 Name <input type="text" name="name" value="My testing server" /><br />
-DNS <input type="text" name="dns" value="entropy.me.uk" />*<br />
-Port <input type="text" name="port" value="12345" />*<br />
+Type: <input type="text" name="type" value="std" /><br />
+DNS <input type="text" name="dns" value="entropy.me.uk" /><br />
+Port <input type="text" name="port" value="12345" /><br />
 Contact Email <input type="text" name="email" value="test@test.example" /><br />
 Game Version <input type="text" name="rev" value="r4359 110.0.1" /><br />
 Pakset <input type="text" name="pak" value="pak.test 100.0 r4355" /><br />
@@ -23,32 +28,11 @@ Info URL <input type="text" name="infurl" value="http://info.url.test" /><br />
 Comments <input type="text" name="comments" value="Test comments... 123" /><br />
 Status <input type="radio" name="st" value="1" /> Online <input type="radio" name="st" value="0" /> Offline<br />
 LANG: <input type="text" name="lang" value="en" /><br />
-ID: <input type="text" name="id" value="" /><br />
 
-Month: <input type="text" name="time" value="1" />
-Year: <input type="text" name="time" value="1911" /><br />
+Time: <input type="text" name="time" value="1,1911" /><br />
 Size: <input type="text" name="size" value="1024,512" /><br />
 
-pstatus: <input type="text" name="pstatus" value="0,1,0,1,0,1,1,0,1,0,1,0,1,0,1,1" /><br />
-plock: <input type="text" name="plock" value="1,0,1,0,1,1,0,1,0,1,0,1,0,1,1,0" /><br />
-pname: <input type="text" name="pname" value="Spectator,Public Service, ..." /><br />
-
-<!-- p0: <input type="text" name="p0" value="1,0" /><br />
-p1: <input type="text" name="p1" value="1,1" /><br />
-p2: <input type="text" name="p2" value="0,1" /><br />
-p3: <input type="text" name="p3" value="0,0" /><br />
-p4: <input type="text" name="p4" value="1,1" /><br />
-p5: <input type="text" name="p5" value="1,1" /><br />
-p6: <input type="text" name="p6" value="1,1" /><br />
-p7: <input type="text" name="p7" value="1,1" /><br />
-p8: <input type="text" name="p8" value="1,1" /><br />
-p9: <input type="text" name="p9" value="1,1" /><br />
-p10: <input type="text" name="p10" value="1,1" /><br />
-p11: <input type="text" name="p11" value="1,1" /><br />
-p12: <input type="text" name="p12" value="1,1" /><br />
-p13: <input type="text" name="p13" value="1,1" /><br />
-p14: <input type="text" name="p14" value="1,1" /><br />
-p15: <input type="text" name="p15" value="1,1" /><br /> -->
+players: <input type="text" name="players" value="0,1,1;1,0,1;2,1,0;3,0,0;4,1,1;5,0,0;6,0,0;7,0,0;8,0,0;9,0,0;10,0,0;11,0,0;12,0,0;13,0,0;14,0,0;15,0,0;" /><br />
 
 Clients: <input type="text" name="clients" value="3" /><br />
 Towns: <input type="text" name="towns" value="34" /><br />
