@@ -55,6 +55,9 @@ var sync_check = function () {
             // Schedule next check
             sync_monitor = setTimeout(sync_check, SYNC_INTERVAL*1000);
         });
+    } else {
+        // Schedule next check
+        sync_monitor = setTimeout(sync_check, SYNC_INTERVAL*1000);
     }
 };
 
@@ -192,28 +195,43 @@ var listing = {
         // Validate all properties using their validator functions to ensure loaded data isn't corrupt
         this.model = {};
 
+        sys.puts("this.model: " + JSON.stringify(this.model));
+        sys.puts("testlist: " + JSON.stringify(testlist));
+
         // For each ID record
         for (var key in testlist) {
+            sys.puts("key: " + key);
             // Check ID is valid (checks for duplicates as part of validate())
-            if (this.internal_fields["id"].validate(testlist[key]) && testlist[key]["id"] && this.internal_fields["id"].validate(testlist[key]["id"]) && testlist[key]["id"] === key) {
+            if (this.internal_fields["id"].validate(parseInt(key)) &&
+                testlist[key]["id"] &&
+                this.internal_fields["id"].validate(testlist[key]["id"]) &&
+                testlist[key]["id"] === parseInt(key)) {
+
+                sys.puts("id: " + testlist[key]["id"] + " is valid");
+
                 // Must be a DID field, must be valid (+ unique)
-                if (testlist[key]["did"] && this.internal_fields["did"].validate(testlist[key]["did"])) {
+                if (testlist[key]["did"] &&
+                    this.internal_fields["did"].validate(testlist[key]["did"])) {
+
+                    sys.puts("did: " + testlist[key]["did"] + " is valid");
+
                     // Add to model
-                    this.model[key] = {"id": key, "did": testlist[key]["did"]};
+                    this.model[testlist[key]["id"]] = {"id": testlist[key]["id"],
+                                                       "did": testlist[key]["did"]};
                     // Must be a date field, must be valid
                     if (testlist[key]["date"] && this.internal_fields["date"].validate(testlist[key]["date"])) {
-                        this.model[key]["date"] = testlist[key]["date"];
+                        this.model[testlist[key]["id"]]["date"] = testlist[key]["date"];
                     } else {
-                        this.model[key]["date"] = this.internal_fields["date"].default();
+                        this.model[testlist[key]["id"]]["date"] = this.internal_fields["date"].default();
                     }
                     // Then check all in valid_fields, and use either value or default
                     for (var vkey in this.valid_fields) {
                         if (this.valid_fields.hasOwnProperty(vkey)) {
                             if (testlist[key].hasOwnProperty(vkey) && this.valid_fields[vkey].validate(testlist[key][vkey])) {
-                                this.model[key][vkey] = testlist[key][vkey];
+                                this.model[testlist[key]["id"]][vkey] = testlist[key][vkey];
                             } else {
                                 // Use default
-                                this.model[key][vkey] = this.valid_fields[vkey].default();
+                                this.model[testlist[key]["id"]][vkey] = this.valid_fields[vkey].default();
                             }
                         }
                     }
@@ -316,7 +334,10 @@ listing.internal_fields = {
                 }
             }
         },
-        validate: function (value) { return false; },           // TODO
+        validate: function (value) {
+            // Must be a number, must be > 1000000000 and < 9999999999
+            return (typeof value === typeof 0 && value >= 1000000000 && value <= 9999999999 && !listing.lookup_id(value));
+        },
         update: function (id, field, value) { return false; }   // Immutable
     },
     "did": {
@@ -330,7 +351,9 @@ listing.internal_fields = {
                 }
             }
         },
-        validate: function (value) { return false; },           // TODO
+        validate: function (value) {
+            return true;
+        },
         update: function (id, field, value) { return false; }   // Immutable
     },
     "ip4": {
