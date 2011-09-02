@@ -1,10 +1,25 @@
-<div>
-<p>{{#error}}{{#translate}}select_server_id_error{{/translate}}{{/error}}{{^error}}{{#translate}}select_server_id{{/translate}}{{/error}}</p>
+<div class="selectform">
 <form name="select_server" action="./manage" method="get">
 
-<input type="text" name="id" />
-<input type="hidden" name="lang" value="{{lang}}" />
+<p>{{#error}}{{#translate}}select_server_id_error{{/translate}}{{/error}}{{^error}}{{#translate}}select_server_id{{/translate}}{{/error}}</p>
 
-<input type="submit" value="Submit" />
+<table>
+    <tr>
+        <th colspan="3">{{#translate}}selectform_header{{/translate}}</th>
+    </tr>
+    <tr>
+        <td align="right">
+            <label for="id">{{#translate}}selectform_id{{/translate}}</label>
+        </td>
+        <td align="center">
+            <input type="text" id="id" name="id" />
+            <input type="hidden" name="lang" value="{{lang}}" />
+        </td>
+        <td align="left">
+            <input type="submit" value="Submit" />
+        </td>
+    </tr>
+</table>
+
 </form>
 </div>

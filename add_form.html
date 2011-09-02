@@ -1,14 +1,28 @@
-<div>
-To create a new Simutrans server record click "Create" below. An explanation of how this works will go here.
-
+<div class="addform">
 <!-- This will redirect to the manage page for the new ID -->
 <form name="add_server" action="./add" method="post">
-Which distribution of Simutrans do you wish to create a server for?<br />
-<input type="radio" id="r1" name="type" value="std" checked="checked" /><label for="r1"> Standard</label><br />
-<input type="radio" id="r2" name="type" value="exp" /><label for="r2"> Experimental</label><br />
-<input type="hidden" name="lang" value="{{lang}}" />
 
-<input type="submit" value="Submit" />
+<p>{{#translate}}addform_explain{{/translate}}</p>
+
+<table>
+    <tr>
+        <th colspan="2">{{#translate}}addform_header{{/translate}}</th>
+    </tr>
+    <tr>
+        <td><input type="radio" id="r1" name="type" value="std" checked="checked" /></td>
+        <td><label for="r1">{{#translate}}addform_std{{/translate}}</label></td>
+    </tr>
+    <tr>
+        <td><input type="radio" id="r2" name="type" value="exp" /></td>
+        <td><label for="r2">{{#translate}}addform_exp{{/translate}}</label></td>
+    </tr>
+    <tr>
+        <td colspan="2" align="right">
+            <input type="hidden" name="lang" value="{{lang}}" />
+            <input type="submit" value="{{#translate}}addform_submit{{/translate}}" />
+        </td>
+    </tr>
+</table>
+
 </form>
-
 </div>

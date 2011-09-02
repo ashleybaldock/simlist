@@ -896,6 +896,19 @@ var translate = function() {
         convoys: "Vehicles:",
         stops: "Stops:",
 
+        addform_explain: "To create a new Simutrans server record click \"Create\" below. This will generate a unique ID code for your server which you can use to configure automated status updates. You will also be able to manage some server details via this website. Upon submission of the form you will be redirected to the management page for the newly created server.",
+        addform_header: "Add a server",
+        addform_std: "Simutrans Standard",
+        addform_exp: "Simutrans Experimental",
+        addform_submit: "Create Server",
+
+        selectform_header: "Select a Server",
+        selectform_id: "ID of server",
+        select_server_id: "Enter a Server ID to manage settings",
+        select_server_id_error: "Sorry, the ID specified is not registered. Please enter a valid ID or select 'Add Server' to register a new one.",
+
+        manageform_id_warn1: "This is your server ID:",
+        manageform_id_warn2: "Please make a note of it as you will require this ID to manage server properties on this website. You will also need to use this ID in your game configuration to identify your instance of Simutrans to the listing server. I recommend that you bookmark this page to ensure you do not lose the ID number.",
         manageform_header: "Make changes to server settings",
         manageform_explain1: "This field will be updated automatically by the game.",
         manageform_explain2: "IP addresses are determined automatically from the server DNS/IP address field.",
@@ -914,8 +927,6 @@ var translate = function() {
         manageform_setoffline: "Set server offline",
         manageform_submit: "Submit changes",
 
-        select_server_id: "Enter a Server ID to manage settings",
-        select_server_id_error: "Sorry, the ID specified is not registered. Please enter a valid ID or select 'Add Server' to register a new one."
     };
     return function(text, render) {
         if (translations[render(text)]) {
@@ -1121,7 +1132,7 @@ post("/add", function (req, res) {
         // Set up redirect url
         // Set game type (standard or experimental)
         listing.validate_field(newid, "type", qs["type"]);
-        var newloc = "/manage?warn=1&lang=" + qs["lang"] + "&id=" + newid;
+        var newloc = "/manage?lang=" + qs["lang"] + "&id=" + newid;
 
 
         var msg = "Redirecting you to: " + newloc;
@@ -1132,7 +1143,7 @@ post("/add", function (req, res) {
 
 
 // GET -> form, POST -> submit form
-// /manage?id=1234567890&lang=en&success=1&warn=1
+// /manage?id=1234567890&lang=en&success=1
 get("/manage", function (req, res) {
     sys.puts("GET " + req.url);
 

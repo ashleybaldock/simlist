@@ -2,6 +2,12 @@
 <form name="manage_server" action="./manage" method="post">
 
 {{#fields}}
+<p>{{#translate}}manageform_id_warn1{{/translate}}</p>
+
+<p class="iddisplay">{{id}}</p>
+
+<p>{{#translate}}manageform_id_warn2{{/translate}}</p>
+
 <table>
     <tr>
         <th colspan="4">{{#translate}}manageform_header{{/translate}}</th>
@@ -24,13 +30,13 @@
     </tr>
     <tr>
         <td>
-            <label for="ip4">{{#translate}}manageform_ip4{{/translate}}<sup>&dagger;&dagger;</sup></span></label>
+            <label for="ip4">{{#translate}}manageform_ip4{{/translate}}<sup>&dagger;&dagger;</sup></label>
         </td>
         <td>
             <input class="bb" type="text" id="ip4" name="ip4" value="{{ip4}}" disabled="disabled" />
         </td>
         <td rowspan="2">
-            <label for="port">{{#translate}}manageform_port{{/translate}}<sup>&dagger;</sup></span></label>
+            <label for="port">{{#translate}}manageform_port{{/translate}}<sup>&dagger;</sup></label>
         </td>
         <td rowspan="2">
             <input class="bb" type="text" id="port" name="port" value="{{port}}" />
@@ -38,7 +44,7 @@
     </tr>
     <tr>
         <td>
-            <label for="ip6">{{#translate}}manageform_ip6{{/translate}}<sup>&dagger;&dagger;</sup></span></label>
+            <label for="ip6">{{#translate}}manageform_ip6{{/translate}}<sup>&dagger;&dagger;</sup></label>
         </td>
         <td>
             <input class="bb" type="text" id="ip6" name="ip6" value="{{ip6}}" disabled="disabled" />

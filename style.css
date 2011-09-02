@@ -107,22 +107,24 @@ border: 0;
 }
 
 .main_nav a {
-padding: 0;
-margin: 0;
-border: 0;
-padding: 0.2em 0.8em 0.2em 0.8em;
-background-color: #DEF0FB;
-text-decoration: none;
-color: #000;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    padding: 0.2em 0.8em 0.2em 0.8em;
+    background-color: #DEF0FB;
+    text-decoration: none;
+    color: #000;
 }
 .main_nav a:hover {
-background-color: #B8DEF7;
-color: #000;
+    background-color: #B8DEF7;
+    color: #000;
 }
 .main_nav a: {
 
 }
 
+
+/* Styles for the server management form */
 table {
     border-spacing: 0;
     padding: 0;
@@ -144,6 +146,54 @@ table.main {
     padding-bottom: 1em;
 }
 
+
+/* Styles for the server add form */
+.addform {
+    background-color: #FFF;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+.addform table {
+    width: auto;
+    margin-left: 10%;
+    margin-right: 10%;
+    border: 1px solid #000;
+}
+.addform p {
+    width: auto;
+    margin-left: 10%;
+    margin-right: 10%;
+}
+.addform td {
+}
+
+
+/* Styles for the server selection form */
+.selectform {
+    background-color: #FFF;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+.selectform table {
+    width: auto;
+    margin-left: 10%;
+    margin-right: 10%;
+    border: 1px solid #000;
+}
+.selectform p {
+    width: auto;
+    margin-left: 10%;
+    margin-right: 10%;
+}
+.selectform td {
+    padding: 1em;
+}
+
+/* width 100% for input controls */
 .bb {
     width: 100%;
     box-sizing: border-box; /* css3 rec */
@@ -195,6 +245,10 @@ tr.end_listing td table td {
     border-bottom: 0;
 }
 
+td input.submit {
+    text-align: right;
+}
+
 table.playerinfo {
     border: 1px solid #000;
 }
@@ -203,6 +257,13 @@ table.mapinfo {
 }
 table.otherinfo {
     border: 1px solid #000;
+}
+
+p.iddisplay {
+    font-size: larger;
+    font-weight: bold;
+    font-family: monospace;
+    padding-left: 1em;
 }
 
 
