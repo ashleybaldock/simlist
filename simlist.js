@@ -1,6 +1,7 @@
 HOST = null;                            // Server listening IP (or null for all)
 PORT = 8001;                            // Server listing port
-ANNOUNCE_MULTIPLIER = 2;                // Number of server announce intervals before server marked offline
+OFFLINE_MULTIPLIER = 2;                 // Number of server announce intervals before server marked offline
+PRUNE_INTERVAL = 604800;                // Length of time before inactive servers are removed from the listing
 STATUS_CHECK_INTERVAL = 60;             // Interval between checks of server status
 SYNC_FILE = "/var/simlist/listing";     // File to write out internal data model to
 SYNC_INTERVAL = 30;                     // Sync internal data model to disk every XX seconds, default 30
@@ -18,18 +19,31 @@ setInterval(function () {
 var status_monitor;         // timeoutId for the status checks
 var status_check = function () {
     sys.puts("Checking server statuses");
-    // Check the last report date of all listed servers against the current date with respect to their announce interval, any which haven't been heard from in ANNOUNCE_MULTIPLIER times the interval should be set to offline status
+    // Check the last report date of all listed servers against the current date with respect to their announce interval
+    // any which haven't been heard from in OFFLINE_MULTIPLIER times the interval should be set to offline status
+    // Also check the last report date against the current date with respect to the PRUNE_INTERVAL
+    // any not heard from in this interval should be removed entirely
     var cdate = (new Date()).getTime();
     for (var key in listing.model) {
         if (listing.model.hasOwnProperty(key) && listing.model[key]["st"] > 0) {
             sys.puts("Checking server: " + key + " aiv: " + listing.model[key]["aiv"]);
-            var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * ANNOUNCE_MULTIPLIER;
-            sys.puts("cdate:      " + cdate + ", (" + cdate/1000 + ")");
-            sys.puts("expiredate: " + expiredate + ", (" + expiredate/1000 + ")");
-            sys.puts("difference: " + (cdate - expiredate));
-            if (cdate > expiredate) {
-                sys.puts("Setting server: " + key + " to offline");
-                listing.model[key]["st"] = 0;
+            // Check for prune interval
+            var prunedate = listing.model[key]["date"] + PRUNE_INTERVAL * 1000;
+            sys.puts("prunedate: " + prunedate + ", (" + prunedate/1000 + ")");
+            sys.puts("difference: " + (cdate - prunedate));
+            if (cdate > prunedate) {
+                sys.puts("Removing server: " + key);
+                delete listing.model[key];
+            } else {
+                // Check for offline interval
+                var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * OFFLINE_MULTIPLIER;
+                sys.puts("cdate:      " + cdate + ", (" + cdate/1000 + ")");
+                sys.puts("expiredate: " + expiredate + ", (" + expiredate/1000 + ")");
+                sys.puts("difference: " + (cdate - expiredate));
+                if (cdate > expiredate) {
+                    sys.puts("Setting server: " + key + " to offline");
+                    listing.model[key]["st"] = 0;
+                }
             }
         }
     }
@@ -149,38 +163,43 @@ var checkdomain = function (str) {
 };
 
 
+
+// New ID format is dns:port, e.g. entropy.me.uk:13353 or 2001:98b::33:13357
+// Unique by this identifier
+
+
 var listing = {
     sync: false,
 
     // Access methods
-    lookup_id: function (lookupid) {
+    lookup: function (lookupid) {
         // Lookup the record with the specified ID, return false if record not found
         for (var id in this.model) {
-            if (parseInt(id) === parseInt(lookupid)) {
+            if (this.model.hasOwnProperty(id) && id === lookupid) {
                 return this.model[lookupid];
             }
         }
         return false;
     },
-    lookup_did: function (lookupdid) {
-        // Lookup record with the specified display ID, return false if record not found
-        return false;        // TODO
-    },
 
-    create_server: function () {
+    new: function (newid, newdns, newport) {
         var new_server = {};
         // Add to listing + write out listing file
-        for (var key in this.internal_fields) {
-            new_server[key] = this.internal_fields[key].default();
+        for (var key in this.ifields) {
+            new_server[key] = this.ifields[key].default();
         }
-        for (var key in this.valid_fields) {
-            new_server[key] = this.valid_fields[key].default();
+        // Set port + dns
+        new_server["dns"] = newdns;
+        new_server["port"] = newport;
+
+        for (var key in this.vfields) {
+            new_server[key] = this.vfields[key].default();
         }
-        sys.puts("New server created, ID: " + new_server["id"]);
+        sys.puts("New server created, ID: " + newid);
         // Add a new server to the listing
-        this.model[new_server["id"]] = new_server;
+        this.model[newid] = new_server;
         // Return ID of the new server
-        return new_server["id"];
+        return newid;
     },
 
     read: function () {
@@ -202,16 +221,16 @@ var listing = {
         for (var key in testlist) {
             sys.puts("key: " + key);
             // Check ID is valid (checks for duplicates as part of validate())
-            if (this.internal_fields["id"].validate(parseInt(key)) &&
+            if (this.ifields["id"].validate(parseInt(key)) &&
                 testlist[key]["id"] &&
-                this.internal_fields["id"].validate(testlist[key]["id"]) &&
+                this.ifields["id"].validate(testlist[key]["id"]) &&
                 testlist[key]["id"] === parseInt(key)) {
 
                 sys.puts("id: " + testlist[key]["id"] + " is valid");
 
                 // Must be a DID field, must be valid (+ unique)
                 if (testlist[key]["did"] &&
-                    this.internal_fields["did"].validate(testlist[key]["did"])) {
+                    this.ifields["did"].validate(testlist[key]["did"])) {
 
                     sys.puts("did: " + testlist[key]["did"] + " is valid");
 
@@ -219,19 +238,19 @@ var listing = {
                     this.model[testlist[key]["id"]] = {"id": testlist[key]["id"],
                                                        "did": testlist[key]["did"]};
                     // Must be a date field, must be valid
-                    if (testlist[key]["date"] && this.internal_fields["date"].validate(testlist[key]["date"])) {
+                    if (testlist[key]["date"] && this.ifields["date"].validate(testlist[key]["date"])) {
                         this.model[testlist[key]["id"]]["date"] = testlist[key]["date"];
                     } else {
-                        this.model[testlist[key]["id"]]["date"] = this.internal_fields["date"].default();
+                        this.model[testlist[key]["id"]]["date"] = this.ifields["date"].default();
                     }
-                    // Then check all in valid_fields, and use either value or default
-                    for (var vkey in this.valid_fields) {
-                        if (this.valid_fields.hasOwnProperty(vkey)) {
-                            if (testlist[key].hasOwnProperty(vkey) && this.valid_fields[vkey].validate(testlist[key][vkey])) {
+                    // Then check all in vfields, and use either value or default
+                    for (var vkey in this.vfields) {
+                        if (this.vfields.hasOwnProperty(vkey)) {
+                            if (testlist[key].hasOwnProperty(vkey) && this.vfields[vkey].validate(testlist[key][vkey])) {
                                 this.model[testlist[key]["id"]][vkey] = testlist[key][vkey];
                             } else {
                                 // Use default
-                                this.model[testlist[key]["id"]][vkey] = this.valid_fields[vkey].default();
+                                this.model[testlist[key]["id"]][vkey] = this.vfields[vkey].default();
                             }
                         }
                     }
@@ -248,7 +267,7 @@ var listing = {
 
     update_datestamp: function (id) {
         // Set datestamp of specified ID to now()
-        listing.internal_fields["date"].update(id);
+        listing.ifields["date"].update(id);
         return true;
     },
 
@@ -257,11 +276,11 @@ var listing = {
         // First call parse method, which will take input as it comes in
         // over the wire and convert it into the correct representation
         sys.puts("update_field for: id: " + id + ", field: " + field + ", value: " + value);
-        var parsedval = listing.valid_fields[field].parse(value);
+        var parsedval = listing.vfields[field].parse(value);
 
         // Then check with the validate method, if this returns true it's safe
         // to go ahead and update the field
-        if (listing.valid_fields[field].validate(parsedval)) {
+        if (listing.vfields[field].validate(parsedval)) {
             listing.model[id][field] = parsedval;
             listing.sync = true;
             return true;
@@ -273,9 +292,9 @@ var listing = {
     // External method, should be called for any potential update field
     validate_field: function (id, field, value) {
         // Validate (and update if valid) an externally accessible field
-        if (this.lookup_id(id)) {
-            if (field in this.valid_fields) {
-                return this.valid_fields[field].update(id, field, value);
+        if (this.lookup(id)) {
+            if (field in this.vfields) {
+                return this.vfields[field].update(id, field, value);
             }
         }
         return false;
@@ -296,8 +315,8 @@ var listing = {
         }
     },
     update_internal_field: function (id, field, value) {
-        if (this.lookup_id(id)) {
-            if (field in this.valid_fields || field in this.internal_fields) {
+        if (this.lookup(id)) {
+            if (field in this.vfields || field in this.ifields) {
                 this.model[id][field] = value;
                 sync = true;
                 return true;
@@ -322,119 +341,28 @@ listing.model = {};
 //   default()  - return a default value
 //   validate() - validate storage format of field
 //   update()   - update the field
-listing.internal_fields = {
-    "id": {
-        default: function () {
-            while(1) {
-                // Random number between 1000000000 and 9999999999
-                var id = 1000000000 + Math.floor(Math.random()*8999999999);
-                // Check that it isn't already in use
-                if (!listing.lookup_id(id)) {
-                    return id;
-                }
-            }
-        },
-        validate: function (value) {
-            // Must be a number, must be > 1000000000 and < 9999999999
-            return (typeof value === typeof 0 && value >= 1000000000 && value <= 9999999999 && !listing.lookup_id(value));
-        },
-        update: function (id, field, value) { return false; }   // Immutable
-    },
-    "did": {
-        default: function () {
-            while(1) {
-                // Random number between 1048576 (0x100000) and 16777215 (0xFFFFFF)
-                var did = (1048576 + Math.floor(Math.random()*15728639)).toString(16);
-                // Check that it isn't already in use
-                if (!listing.lookup_did(did)) {
-                    return did;
-                }
-            }
-        },
-        validate: function (value) {
-            return true;
-        },
-        update: function (id, field, value) { return false; }   // Immutable
-    },
-    "ip4": {
-        default: function () { return ""; },
-        validate: function (value) {
-            return true;                // TODO IPv4 validation
-        },
-        update: listing.update_internal_field,
-    },
-    "ip6": {
-        default: function () { return ""; },
-        validate: function (value) {
-            return true;                // TODO IPv4 validation
-        },
-        update: listing.update_internal_field,
-    },
-    "date": {
-        default: function () { return 0; },
-        validate: function (value) {
-            return (typeof value === typeof 0 && value >= 0);
-        },
-        update: function (id) {
-            listing.model[id]["date"] = (new Date()).getTime();
-            listing.sync = true;
-        },
-    }
-};
-
-// Each field record has the following methods:
-//   default()  - return a default value
-//   validate() - validate storage format of field
-//   update()   - update the field
-//   parse()    - convert the "on-the-wire" data into the storage format
-listing.valid_fields = {
-    "st": {     // Status
-        default: function () { return 0; },
-        parse: function(rawvalue) { return parseInt(rawvalue); },
-        validate: function (value) {
-            return (typeof value === typeof 0 && value >= 0 && value < 2);
-        },
-        update: listing.update_field,
-    },
-    "aiv": {    // Announce interval (seconds)
-        default: function () { return 900; },
-        parse: function(rawvalue) { return parseInt(rawvalue); },
-        validate: function (value) {
-            return (typeof value === typeof 0 && value >= 30);
-        },
-        update: listing.update_field,
-    },
-    "type": {   // Server type
-        default: function () { return "std"; },
-        parse: function(rawvalue) { return rawvalue.toString(); },
-        validate: function (value) {
-            for (var n in av_type) {
-                if (value === av_type[n]) { return true; }
-            }
-            return false;
-        },
-        update: listing.update_field,
-    },
+listing.ifields = {
     "dns": {
         default: function () { return ""; },
         parse: function(rawvalue) { return rawvalue.toString(); },
         // Todo: validate should take a callback to execute on success
         // to permit async validation (e.g. dns lookups)
-        validate: function (value, id, callback) {
+        validate: function (value, success, failure) {
             // TODO it should be an error condition if the dns name supplied does not
             // resolve to at least one v4/v6 address (indicates hostname is invalid)
             // Validate domain name/IP address here
             // TODO validity of this field should influence the server_valid internal field, which then influences display of servers/appearance in server listing
+
             if (checkipv6(value) || checkipv4(value) || checkdomain(value)) {
-                if (callback === undefined) { return true; }
-                sys.puts("dns running calback");
-                callback(id, value);
+                sys.puts("DNS validation success, running callback");
+                success();
             } else {
-                // Invalid
-                return false;
+                sys.puts("DNS validation failure, running callback");
+                failure();
             }
         },
-        update: function (id, field, value) {
+        update: function () { return false; }       // Immutable
+/*        update: function (id, field, value) {
             // TODO
             // Assume that ID has been checked
             return this.validate(value, id, function (id, value) {
@@ -469,13 +397,59 @@ listing.valid_fields = {
                 listing.sync = true;
                 return true;
             });
-        },
+        } */
     },
     "port": {
         default: function () { return 13353 },
         parse: function(rawvalue) { return parseInt(rawvalue); },
         validate: function (value) {
             return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 65536);
+        },
+        update: function () { return false; }   // Immutable
+    },
+    "date": {
+        default: function () { return 0; },
+        validate: function (value) {
+            return (typeof value === typeof 0 && value >= 0);
+        },
+        update: function (id) {
+            listing.model[id]["date"] = (new Date()).getTime();
+            listing.sync = true;
+        },
+    }
+};
+
+// Each field record has the following methods:
+//   default()  - return a default value
+//   validate() - validate storage format of field
+//   update()   - update the field
+//   parse()    - convert the "on-the-wire" data into the storage format
+listing.vfields = {
+    "st": {     // Status
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (typeof value === typeof 0 && value >= 0 && value < 2);
+        },
+        update: listing.update_field,
+    },
+    "aiv": {
+        // Announce interval (seconds)
+        default: function () { return 900; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (typeof value === typeof 0 && value >= 30);
+        },
+        update: listing.update_field,
+    },
+    "type": {   // Server type
+        default: function () { return "std"; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            for (var n in av_type) {
+                if (value === av_type[n]) { return true; }
+            }
+            return false;
         },
         update: listing.update_field,
     },
@@ -552,6 +526,28 @@ listing.valid_fields = {
         update: listing.update_field,
     },
     "time": {
+        // Current date of the server game
+        default: function () { return {"yr": 1, "mn": 0}; },
+        parse: function(rawvalue) {
+            // Split by "," and store in dict with two fields
+            return {"mn": parseInt(rawvalue.toString().split(",")[0]),
+                    "yr": parseInt(rawvalue.toString().split(",")[1])};
+        },
+        validate: function (value) {
+            sys.puts(JSON.stringify(value));
+            if (typeof value === typeof {}) {
+                if (value.hasOwnProperty("yr") && typeof value["yr"] === typeof 0 && value["yr"] > 0) {
+                    if (value.hasOwnProperty("mn") && typeof value["mn"] === typeof 0 && value["mn"] >= 0 && value["mn"] < 12) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        },
+        update: listing.update_field,
+    },
+    "start": {
+        // Starting date of the server game
         default: function () { return {"yr": 1, "mn": 0}; },
         parse: function(rawvalue) {
             // Split by "," and store in dict with two fields
@@ -677,11 +673,29 @@ listing.valid_fields = {
             return false;
         }
     },
+    "active": {
+        // number of active players
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value >= 0 && value < 16);
+        },
+        update: listing.update_field,
+    },
+    "locked": {
+        // number of locked players
+        default: function () { return 0; },
+        parse: function(rawvalue) { return parseInt(rawvalue); },
+        validate: function (value) {
+            return (value !== NaN && typeof value === typeof 0 && value >= 0 && value < 16);
+        },
+        update: listing.update_field,
+    },
     "clients": {
         default: function () { return 0; },
         parse: function(rawvalue) { return parseInt(rawvalue); },
         validate: function (value) {
-            return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 16);
+            return (value !== NaN && typeof value === typeof 0 && value >= 0 && value < 16);
         },
         update: listing.update_field,
     },
@@ -805,10 +819,11 @@ var static_handler = function (filename) {
 
 
 
-// Dynamic URL handlers
+// URL handlers
 
 // Redirect to /list
 get("/", redirect_handler_perm("/list"));
+
 get("/style.css", static_handler("style.css"));
 get("/simlogo.png", static_handler("simlogo.png"));
 
@@ -959,26 +974,52 @@ post("/announce", function (req, res) {
         var qs = querystring.parse(body);
         // process defaults
 
-        // Check ID is present and registered
-        if (qs["id"] && listing.lookup_id(qs["id"])) {
-            for (var key in qs)
-            {
-                if (qs.hasOwnProperty(key) && key !== "id") {
-                    sys.puts("post data - " + key + ": " + qs[key]);
-                    listing.validate_field(qs["id"], key, qs[key]);
-                }
+        // ID formed of dns and port fields, these must be present + valid
+        if (qs["port"] && listing.ifields["port"].validate(listing.ifields["port"].parse(qs["port"]))) {
+            // Valid port field
+            if (qs["dns"]) {
+                listing.ifields["dns"].validate(listing.ifields["dns"].parse(qs["dns"]), function () {
+                    // Success callback
+
+                    var id = qs["dns"] + ":" + qs["port"];
+
+                    if (!listing.lookup(id)) {
+                        listing.new(id, qs["dns"], qs["port"]);
+                    }
+
+                    for (var key in qs)
+                    {
+                        if (qs.hasOwnProperty(key)) {
+                            sys.puts("post data - " + key + ": " + qs[key]);
+                            listing.validate_field(id, key, qs[key]);
+                        }
+                    }
+
+                    // Set date of this request, to keep track of server status in future
+                    listing.update_datestamp(id);
+
+                    // Respond with just 202 Accepted header + single error code digit
+                    // TODO replace with a better HTTP response given that we know if it worked now
+                    res.writeHead(202, {"Content-Type": "text/plain"});
+                    res.end("0");
+                    
+                }, function () {
+                    // Failure callback
+                    // Invalid ID, return Bad Request error
+                    var err = "Bad Request - Missing DNS field or value invalid";
+                    sys.puts(err);
+                    res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
+                    res.end(err);
+                    return;
+                });
             }
-            // Set date of this request, to keep track of server status in future
-            listing.update_datestamp(qs["id"]);
-            // Respond with just 202 Accepted header + single error code digit
-            res.writeHead(202, {"Content-Type": "text/plain"});
-            res.end("0");
         } else {
             // Invalid ID, return Bad Request error
-            var err = "Bad Request - Missing ID field or ID not registered with server";
+            var err = "Bad Request - Missing port field or value invalid";
             sys.puts(err);
             res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
             res.end(err);
+            return;
         }
     });
 });
@@ -986,7 +1027,7 @@ post("/announce", function (req, res) {
 
 // /list?format=csv     - format for game engine
 // /list?format=html    - default (html) output
-// /list?lang=en&detail=did
+// /list?lang=en&detail=id
 get("/list", function (req, res) {
     sys.puts("GET " + req.url);
 
@@ -1046,10 +1087,10 @@ get("/list", function (req, res) {
                 // Format output as CSV, any string containing a comma should be quoted
                 // Due to validation of input to fields, no need to validate output of the same
                 // However only servers where all values differ from defaults should be output
-                if (listing.model[key]["dns"] !== listing.valid_fields["dns"]() &&
-                    listing.model[key]["port"] !== listing.valid_fields["port"]() &&
-                    listing.model[key]["rev"] !== listing.valid_fields["rev"]() &&
-                    listing.model[key]["pak"] !== listing.valid_fields["pak"]()) {
+                if (listing.model[key]["dns"] !== listing.vfields["dns"].default() &&
+                    listing.model[key]["port"] !== listing.vfields["port"].default() &&
+                    listing.model[key]["rev"] !== listing.vfields["rev"].default() &&
+                    listing.model[key]["pak"] !== listing.vfields["pak"].default()) {
                     res.write(listing.model[key]["dns"] + ":" + listing.model[key]["port"] + "," + listing.model[key]["rev"] + "," + listing.model[key]["pak"] + "\n");
                 }
             }
@@ -1066,175 +1107,9 @@ get("/list", function (req, res) {
 
 
 // GET -> form, POST -> submit
-// /add?lang=en
-get("/add", function (req, res) {
-    sys.puts("GET " + req.url);
-
-    // Possible values are: lang
-    var qs = url.parse(req.url, true).query;
-    // Process defaults
-    if (!qs["lang"] || av_lang.indexOf(qs["lang"]) < 0) {
-        sys.puts("No language specified, defaulting to English");
-        qs["lang"] = "en";  // Default to English
-    }
-
-    res.writeHead(200, {"Content-Type": "text/html"});
-
-    // Write header
-    res.write(mustache.to_html(templates["header.html"],
-        {title: "servers.simutrans.org - Server listing", lang: qs["lang"], translate: translate}));
-
-    // Write language selector
-    var urlbase = "./add";
-    if (qs["id"]) {
-        urlbase = urlbase + "?id=" + qs["id"];
-    }
-    res.write(mustache.to_html(templates["langselect.html"],
-        {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
-    ));
-
-    // Write form to create new server ID
-    res.write(mustache.to_html(templates["add_form.html"],
-        {lang: qs["lang"], translate: translate}));
-
-    res.write(mustache.to_html(templates["langselect.html"],
-        {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
-    ));
-    // Write the footer and close the request
-    res.write(mustache.to_html(templates["footer.html"], {}));
-    res.end();
-});
-post("/add", function (req, res) {
-    sys.puts("POST " + req.url);
-
-    var body="";
-    req.on("data", function (data) {
-        body += data;
-    });
-    req.on("end", function () {
-        var qs = querystring.parse(body);
-        // Process defaults
-        if (!qs["lang"] || av_lang.indexOf(qs["lang"]) < 0) {
-            sys.puts("no language specified, defaulting to english");
-            qs["lang"] = "en";  // default to english
-        }
-
-        // Generate new server here and then return id in redirect url - todo
-        var newid = listing.create_server();
-
-        for (var key in qs)
-        {
-            if (qs.hasOwnProperty(key)) {
-                sys.puts("post data - " + key + ": " + qs[key]);
-            }
-        }
-
-        // Set up redirect url
-        // Set game type (standard or experimental)
-        listing.validate_field(newid, "type", qs["type"]);
-        var newloc = "/manage?lang=" + qs["lang"] + "&id=" + newid;
-
-
-        var msg = "Redirecting you to: " + newloc;
-        res.writeHead(303, {"Location": newloc, "Content-Type": "text/html", "Content-Length": msg.length});
-        res.end(msg);
-    });
-});
-
-
-// GET -> form, POST -> submit form
-// /manage?id=1234567890&lang=en&success=1
-get("/manage", function (req, res) {
-    sys.puts("GET " + req.url);
-
-    // Possible values are: lang, id
-    var qs = url.parse(req.url, true).query;
-    // Process defaults
-    if (!qs["lang"] || av_lang.indexOf(qs["lang"]) < 0) {
-        sys.puts("No language specified, defaulting to English");
-        qs["lang"] = "en";  // Default to English
-    }
-
-    res.writeHead(200, {"Content-Type": "text/html"});
-
-    // Write header
-    res.write(mustache.to_html(templates["header.html"],
-        {title: "servers.simutrans.org - Server listing", lang: qs["lang"], translate: translate}));
-
-    // Write language selector
-    var urlbase = "./manage";
-    if (qs["id"]) {
-        urlbase = urlbase + "?id=" + qs["id"];
-    }
-    res.write(mustache.to_html(templates["langselect.html"],
-        {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
-    ));
-
-    // If ID not found, write a message indicating this and present select form - TODO
-
-    // Write form, either to select a server ID or to manage settings
-    if (qs["id"]) {
-        if (listing.lookup_id(qs["id"])) {
-            res.write(mustache.to_html(templates["manage_manageform.html"],
-                {lang: qs["lang"], translate: translate, fields: listing.model[qs["id"]], id: qs["id"]}));
-        } else {
-            res.write(mustache.to_html(templates["manage_selectform.html"],
-                {lang: qs["lang"], translate: translate, error: true}));
-        }
-    } else {
-        res.write(mustache.to_html(templates["manage_selectform.html"],
-            {lang: qs["lang"], translate: translate, error: false}));
-    }
-
-    res.write(mustache.to_html(templates["langselect.html"],
-        {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
-    ));
-    // Write the footer and close the request
-    res.write(mustache.to_html(templates["footer.html"],
-        {}));
-    res.end();
-});
-post("/manage", function (req, res) {
-    sys.puts("POST " + req.url);
-
-    var body="";
-    req.on("data", function (data) {
-        body += data;
-    });
-    req.on("end", function () {
-        var qs = querystring.parse(body);
-        // Process defaults
-        if (!qs["lang"] || av_lang.indexOf(qs["lang"]) < 0) {
-            sys.puts("No language specified, defaulting to English");
-            qs["lang"] = "en";  // Default to English
-        }
-
-        // Check ID is present and registered
-        if (qs["id"] && listing.lookup_id(qs["id"])) {
-            for (var key in qs)
-            {
-                if (qs.hasOwnProperty(key)) {
-                    sys.puts("post data - " + key + ": " + qs[key]);
-                    // Process args
-                    listing.validate_field(qs["id"], key, qs[key]);
-                }
-            }
-            // Set up redirect URL
-            var newloc = "/manage?success=1&lang=" + qs["lang"] + "&id=" + qs["id"];
-            res.writeHead(303, {"Content-Type": "text/plain", "Location": newloc});
-            res.end("Redirecting you to: " + newloc);
-        } else {
-            // Invalid ID, return Bad Request error
-            var err = "Bad Request - Missing ID field or ID not registered with server";
-            sys.puts(err);
-            res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
-            res.end(err);
-        }
-    });
-});
 
 // Read model from file
-listing.read();
+// listing.read();
 
 // Set up monitor processes
 status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);

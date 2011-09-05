@@ -5,6 +5,52 @@
 -->
 
 <div>
+{{#paksets}}
+    <div class="pakset">
+        <h2 class="pakset_name">{{name}}</h2>
+{{#items}}
+{{#data}}
+        <a name="{{dns}}:{{port}}"></a>
+        <div>
+        <!-- left padding of say 10px gives red/green status background -->
+            <a href="map_graphic_big.png"><img src="demomap.png" width="64" height="64" /></a>
+            <div> <!-- Floated to right of image -->
+                <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}} {{#translate}}status_{{st}}{{/translate}}</h3>
+                <p>Map dimensions: {{#size}}{{x}}x{{y}}{{/size}}, started {{#start}}{{mn}}, {{yr}}{{/start}}, current date is {{#time}}{{mn}}, {{yr}}{{/time}}</p>
+                <p>There are 6 active players (10 player slots are unlocked). Currently 2 clients are connected.</p>
+{{/data}}
+{{^detail}}
+{{#data}}
+                <p><a href="./list?lang={{lang}}&detail={{dns}}:{{port}}#{{dns}}:{{port}}">{{#translate}}show_server_details{{/translate}}</a></p>
+            </div>
+        </div>
+{{/data}}
+{{/detail}}
+{{#detail}}
+{{#data}}
+                <p><a href="./list?lang={{lang}}#{{dns}}:{{port}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
+                <p>Map detail: 34 towns, 1232 citizens, 345 factories, 97 vehicles and 537 stops.</p>
+                <p>The pakset version is:</p>
+                <p>The server game version is:</p>
+                <p>The last announce by this server was XXX seconds/minutes/hours/days ago, the next announce is [expected in YYY seconds/minutes/hours/days] [overdue by ZZZ seconds/minutes/hours/days]</p>
+                <p>Admin email</p>
+                <p>Pakset link</p>
+                <p>Addon link</p>
+                <p>Info link</p>
+                <p>Comments</p>
+                <p>DNS info:port</p>
+                <p>IPv4 addresses</p>
+                <p>IPv6 addresses</p>
+            </div>
+        </div>
+{{/data}}
+{{/detail}}
+{{/items}}
+    </div>
+{{/paksets}}
+</div>
+
+<!-- <div>
 <table class="main">
 {{#paksets}}
     <tr>
@@ -124,4 +170,4 @@
 {{/items}}
 {{/paksets}}
 </table>
-</div>
+</div> -->
