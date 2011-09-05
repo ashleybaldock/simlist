@@ -5,6 +5,23 @@ PRUNE_INTERVAL = 604800;                // Length of time before inactive server
 STATUS_CHECK_INTERVAL = 60;             // Interval between checks of server status
 SYNC_FILE = "/var/simlist/listing";     // File to write out internal data model to
 SYNC_INTERVAL = 30;                     // Sync internal data model to disk every XX seconds, default 30
+DEBUG = false;                          // Turns on debugging interfaces
+
+
+
+var mustache = require("/usr/local/bin/nodemodules/mustache");
+var http = require("http");
+var fs = require("fs");
+var sys = require("sys");
+var url = require("url");
+var dns = require("dns");
+var querystring = require("querystring");
+
+// Set up available languages/formats
+var av_lang = ["en", "de", "fr"];
+var av_formats = ["html", "csv"];
+var av_type = ["std", "exp"];
+
 
 // when the daemon started
 var starttime = (new Date()).getTime();
@@ -75,20 +92,6 @@ var sync_check = function () {
     }
 };
 
-
-var mustache = require("/usr/local/bin/nodemodules/mustache");
-var http = require("http");
-var fs = require("fs");
-var sys = require("sys");
-var url = require("url");
-var dns = require("dns");
-var querystring = require("querystring");
-DEBUG = false;
-
-// Set up available languages/formats
-var av_lang = ["en", "de", "fr"];
-var av_formats = ["html", "csv"];
-var av_type = ["std", "exp"];
 
 
 // Load all templates
@@ -198,8 +201,8 @@ var listing = {
         sys.puts("New server created, ID: " + newid);
         // Add a new server to the listing
         this.model[newid] = new_server;
-        // Return ID of the new server
-        return newid;
+        // Return true if added successfully
+        return true;
     },
 
     read: function () {
@@ -220,44 +223,35 @@ var listing = {
         // For each ID record
         for (var key in testlist) {
             sys.puts("key: " + key);
-            // Check ID is valid (checks for duplicates as part of validate())
-            if (this.ifields["id"].validate(parseInt(key)) &&
-                testlist[key]["id"] &&
-                this.ifields["id"].validate(testlist[key]["id"]) &&
-                testlist[key]["id"] === parseInt(key)) {
 
-                sys.puts("id: " + testlist[key]["id"] + " is valid");
+            // Rebuild keys from the DNS and port fields of each record, if these fields are missing then it is an invalid record
 
-                // Must be a DID field, must be valid (+ unique)
-                if (testlist[key]["did"] &&
-                    this.ifields["did"].validate(testlist[key]["did"])) {
-
-                    sys.puts("did: " + testlist[key]["did"] + " is valid");
-
-                    // Add to model
-                    this.model[testlist[key]["id"]] = {"id": testlist[key]["id"],
-                                                       "did": testlist[key]["did"]};
-                    // Must be a date field, must be valid
-                    if (testlist[key]["date"] && this.ifields["date"].validate(testlist[key]["date"])) {
-                        this.model[testlist[key]["id"]]["date"] = testlist[key]["date"];
-                    } else {
-                        this.model[testlist[key]["id"]]["date"] = this.ifields["date"].default();
-                    }
-                    // Then check all in vfields, and use either value or default
-                    for (var vkey in this.vfields) {
-                        if (this.vfields.hasOwnProperty(vkey)) {
-                            if (testlist[key].hasOwnProperty(vkey) && this.vfields[vkey].validate(testlist[key][vkey])) {
-                                this.model[testlist[key]["id"]][vkey] = testlist[key][vkey];
-                            } else {
-                                // Use default
-                                this.model[testlist[key]["id"]][vkey] = this.vfields[vkey].default();
+            if (testlist[key]["port"] && this.ifields["port"].validate(testlist[key]["port"])) {
+                if (testlist[key]["dns"] && this.ifields["dns"].validate(testlist[key]["dns"])) {
+                    var newid = testlist[key]["dns"] + ":" + testlist[key]["port"];
+                    if (listing.new(newid, testlist[key]["dns"], testlist[key]["port"])) {
+                        // Must be a date field, must be valid
+                        if (testlist[key]["date"] && this.ifields["date"].validate(testlist[key]["date"])) {
+                            this.model[newid]["date"] = testlist[key]["date"];
+                        }
+                        // Then check all in vfields, and update values if valid
+                        for (var vkey in this.vfields) {
+                            if (this.vfields.hasOwnProperty(vkey)) {
+                                if (testlist[key].hasOwnProperty(vkey) && this.vfields[vkey].validate(testlist[key][vkey])) {
+                                    this.model[newid][vkey] = testlist[key][vkey];
+                                }
                             }
                         }
+                    } else {
+                        sys.puts("Failed to add item with ID: " + newid + " - not unique!");
                     }
+                } else {
+                    sys.puts("Failed to add item with ID: " + newid + " - failed to validate dns!");
                 }
+            } else {
+                sys.puts("Failed to add item with ID: " + newid + " - failed to validate port!");
             }
         }
-        // Only add valid fields to the active model by copying them over
     },
 
     filter: function (field, value, set) {
@@ -354,11 +348,19 @@ listing.ifields = {
             // TODO validity of this field should influence the server_valid internal field, which then influences display of servers/appearance in server listing
 
             if (checkipv6(value) || checkipv4(value) || checkdomain(value)) {
-                sys.puts("DNS validation success, running callback");
-                success();
+                if (typeof success === "function") {
+                    sys.puts("DNS validation success, running callback");
+                    success();
+                } else {
+                    return true;
+                }
             } else {
-                sys.puts("DNS validation failure, running callback");
-                failure();
+                if (typeof failure === "function") {
+                    sys.puts("DNS validation failure, running callback");
+                    failure();
+                } else {
+                    return false;
+                }
             }
         },
         update: function () { return false; }       // Immutable
@@ -826,6 +828,7 @@ get("/", redirect_handler_perm("/list"));
 
 get("/style.css", static_handler("style.css"));
 get("/simlogo.png", static_handler("simlogo.png"));
+get("/demomap.png", static_handler("demomap.png"));
 
 
 // Map available languages into object for formatting page template
@@ -860,8 +863,8 @@ var translate = function() {
         de: "German",
         fr: "French",
         status: "Status:",
-        status_0: "Server Offline",
-        status_1: "Server Online",
+        status_0: "Offline",
+        status_1: "Online",
         datetime: "Last report:",
         dns: "FQDN or IP address of server:",
         reachable_ip4: "This server should be reachable via IPv4 with address: ",
@@ -910,6 +913,22 @@ var translate = function() {
         factories: "Factories:",
         convoys: "Vehicles:",
         stops: "Stops:",
+
+        month_1: "January",
+        month_2: "February",
+        month_3: "March",
+        month_4: "April",
+        month_5: "May",
+        month_6: "June",
+        month_7: "July",
+        month_8: "August",
+        month_9: "September",
+        month_10: "October",
+        month_11: "November",
+        month_12: "December",
+        time_unknown: "Unknown",
+        start_unknown: "Unknown",
+        size_unknown: "Unknown",
 
         addform_explain: "To create a new Simutrans server record click \"Create\" below. This will generate a unique ID code for your server which you can use to configure automated status updates. You will also be able to manage some server details via this website. Upon submission of the form you will be redirected to the management page for the newly created server.",
         addform_header: "Add a server",
@@ -984,7 +1003,7 @@ post("/announce", function (req, res) {
                     var id = qs["dns"] + ":" + qs["port"];
 
                     if (!listing.lookup(id)) {
-                        listing.new(id, qs["dns"], qs["port"]);
+                        listing.new(id, listing.ifields["dns"].parse(qs["dns"]), listing.ifields["port"].parse(qs["port"]));
                     }
 
                     for (var key in qs)
@@ -1000,8 +1019,8 @@ post("/announce", function (req, res) {
 
                     // Respond with just 202 Accepted header + single error code digit
                     // TODO replace with a better HTTP response given that we know if it worked now
-                    res.writeHead(202, {"Content-Type": "text/plain"});
-                    res.end("0");
+                    res.writeHead(202, {"Content-Type": "text/html"});
+                    res.end("<a href=\"./list\">back to list</a>");
                     
                 }, function () {
                     // Failure callback
@@ -1064,7 +1083,7 @@ get("/list", function (req, res) {
             if (listing.model.hasOwnProperty(key)) {
                 var new_item = listing.model[key];
                 paksets[0]["items"].push(
-                    {detail: (listing.model[key]["did"] === qs["detail"]),
+                    {detail: (key === qs["detail"]),
                     data: listing.model[key]});
             }
         }
@@ -1109,7 +1128,7 @@ get("/list", function (req, res) {
 // GET -> form, POST -> submit
 
 // Read model from file
-// listing.read();
+listing.read();
 
 // Set up monitor processes
 status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);

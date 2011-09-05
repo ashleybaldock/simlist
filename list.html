@@ -15,8 +15,8 @@
         <!-- left padding of say 10px gives red/green status background -->
             <a href="map_graphic_big.png"><img src="demomap.png" width="64" height="64" /></a>
             <div> <!-- Floated to right of image -->
-                <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}} {{#translate}}status_{{st}}{{/translate}}</h3>
-                <p>Map dimensions: {{#size}}{{x}}x{{y}}{{/size}}, started {{#start}}{{mn}}, {{yr}}{{/start}}, current date is {{#time}}{{mn}}, {{yr}}{{/time}}</p>
+                <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}&nbsp;({{#translate}}status_{{st}}{{/translate}})</h3>
+                <p>Map dimensions: {{#size}}{{#x}}{{x}}x{{y}}{{/x}}{{^x}}{{#translate}}size_unknown{{/translate}}{{/x}}{{/size}}, current in-game date: {{#time}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}time_unknown{{/translate}}{{/mn}}{{/time}}&nbsp;(starting date: {{#start}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}start_unknown{{/translate}}{{/mn}}{{/start}})</p>
                 <p>There are 6 active players (10 player slots are unlocked). Currently 2 clients are connected.</p>
 {{/data}}
 {{^detail}}
