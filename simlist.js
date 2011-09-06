@@ -20,8 +20,6 @@ var querystring = require("querystring");
 // Set up available languages/formats
 var av_lang = ["en", "de", "fr"];
 var av_formats = ["html", "csv"];
-var av_type = ["std", "exp"];
-
 
 // when the daemon started
 var starttime = (new Date()).getTime();
@@ -341,71 +339,77 @@ listing.ifields = {
         parse: function(rawvalue) { return rawvalue.toString(); },
         // Todo: validate should take a callback to execute on success
         // to permit async validation (e.g. dns lookups)
-        validate: function (value, success, failure) {
-            // TODO it should be an error condition if the dns name supplied does not
-            // resolve to at least one v4/v6 address (indicates hostname is invalid)
-            // Validate domain name/IP address here
-            // TODO validity of this field should influence the server_valid internal field, which then influences display of servers/appearance in server listing
+        validate: function (value, reqip, success, failure) {
+            // Setup dummy functions (for validate without callbacks)
+            if (typeof success !== "function") {
+                success = function () { return true; };
+            }
+            if (typeof failure !== "function") {
+                failure = function () { return false; };
+            }
 
-            if (checkipv6(value) || checkipv4(value) || checkdomain(value)) {
-                if (typeof success === "function") {
-                    sys.puts("DNS validation success, running callback");
-                    success();
+            // DNS MUST be valid FQDN, IPv4 or IPv6
+            // Additionally one of the IP addresses MUST match reqip, else invalid
+            if (checkipv6(value)) {
+                if (value === reqip) {
+                    // Exactly one IPv6 address which matches the reqip
+                    sys.puts("dns.validate - success (matched IPv6 address)");
+                    return success();
                 } else {
-                    return true;
-                }
-            } else {
-                if (typeof failure === "function") {
-                    sys.puts("DNS validation failure, running callback");
-                    failure();
-                } else {
-                    return false;
+                    sys.puts("dns.validate - failure (valid IPv6 but does not match request IP");
+                    return failure();
                 }
             }
-        },
-        update: function () { return false; }       // Immutable
-/*        update: function (id, field, value) {
-            // TODO
-            // Assume that ID has been checked
-            return this.validate(value, id, function (id, value) {
-                listing.model[id]["dns"] = value;
-                if (checkipv6(value)) {
-                    listing.update_internal_field(id, "ip4", "");
-                    listing.update_internal_field(id, "ip6", value);
-                } else if (checkipv4(value)) {
-                    listing.update_internal_field(id, "ip4", value);
-                    listing.update_internal_field(id, "ip6", "");
+
+            if (checkipv4(value)) {
+                if (value === reqip) {
+                    // Exactly one IPv4 address which matches the reqip
+                    sys.puts("dns.validate - success (matched IPv4 address)");
+                    return success();
                 } else {
-                    dns.resolve6(value, function (err, addresses) {
-                        // if (err) throw err;
-                        if (!err && addresses.length > 0) {
-                            // TODO - Handle multiple addresses better?
-                            listing.update_internal_field(id, "ip6", addresses[0]);
-                        } else {
-                            listing.update_internal_field(id, "ip6", "");
-                        }
-                        dns.resolve4(value, function (err, addresses) {
-                            // if (err) throw err;
-                            if (!err && addresses.length > 0) {
-                                // TODO - Handle multiple addresses better?
-                                listing.update_internal_field(id, "ip4", addresses[0]);
-                            } else {
-                                listing.update_internal_field(id, "ip4", "");
+                    sys.puts("dns.validate - failure (valid IPv4 but does not match request IP");
+                    return failure();
+                }
+            }
+
+            if (checkdomain(value)) {
+                // Try resolving IPv6 first (AAAA records)
+                dns.resolve6(value, function (err, addresses) {
+                    // if (err) throw err;
+                    if (!err && addresses.length > 0) {
+                        // Got at least one v6 address, compare them against reqip
+                        addresses.forEach(function (element, index, array) {
+                            if (element === reqip) {
+                                sys.puts("dns.validate - success (matched IPv6 address from DNS)");
+                                return success();
                             }
                         });
+                    }
+                    // No v6 addresses or none of them matches, try v4
+                    dns.resolve4(value, function (err, addresses) {
+                        // if (err) throw err;
+                        if (!err && addresses.length > 0) {
+                            // Got at least one v4 address, compare them against reqip
+                            addresses.forEach(function (element, index, array) {
+                                if (element === reqip) {
+                                    sys.puts("dns.validate - success (matched IPv4 address from DNS)");
+                                    return success();
+                                }
+                            });
+                        }
+                        // If we've got here then no addresses match, invoke failure
+                        return failure();
                     });
-                }
-                // Update done
-                listing.sync = true;
-                return true;
-            });
-        } */
+                });
+            }
+        },
+        update: function () { return false; }   // Immutable
     },
     "port": {
         default: function () { return 13353 },
         parse: function(rawvalue) { return parseInt(rawvalue); },
         validate: function (value) {
-            return (value !== NaN && typeof value === typeof 0 && value > 0 && value < 65536);
+            return (value !== NaN && typeof value === typeof 0 && value > 0 && value <= 65535);
         },
         update: function () { return false; }   // Immutable
     },
@@ -417,7 +421,7 @@ listing.ifields = {
         update: function (id) {
             listing.model[id]["date"] = (new Date()).getTime();
             listing.sync = true;
-        },
+        }
     }
 };
 
@@ -441,17 +445,6 @@ listing.vfields = {
         parse: function(rawvalue) { return parseInt(rawvalue); },
         validate: function (value) {
             return (typeof value === typeof 0 && value >= 30);
-        },
-        update: listing.update_field,
-    },
-    "type": {   // Server type
-        default: function () { return "std"; },
-        parse: function(rawvalue) { return rawvalue.toString(); },
-        validate: function (value) {
-            for (var n in av_type) {
-                if (value === av_type[n]) { return true; }
-            }
-            return false;
         },
         update: listing.update_field,
     },
@@ -488,14 +481,6 @@ listing.vfields = {
         update: listing.update_field,
     },
     "pakurl": {
-        default: function () { return ""; },
-        parse: function(rawvalue) { return rawvalue.toString(); },
-        validate: function (value) {
-            return true;                        // TODO (url)
-        },
-        update: listing.update_field,
-    },
-    "addurl": {
         default: function () { return ""; },
         parse: function(rawvalue) { return rawvalue.toString(); },
         validate: function (value) {
@@ -983,7 +968,7 @@ get("/announce", function (req, res) {
     res.end();
 });
 post("/announce", function (req, res) {
-    sys.puts("POST " + req.url);
+    sys.puts("POST from " + req.connection.remoteAddress + " to " + req.url);
 
     var body="";
     req.on("data", function (data) {
@@ -995,9 +980,12 @@ post("/announce", function (req, res) {
 
         // ID formed of dns and port fields, these must be present + valid
         if (qs["port"] && listing.ifields["port"].validate(listing.ifields["port"].parse(qs["port"]))) {
+            
             // Valid port field
             if (qs["dns"]) {
-                listing.ifields["dns"].validate(listing.ifields["dns"].parse(qs["dns"]), function () {
+                listing.ifields["dns"].validate(listing.ifields["dns"].parse(qs["dns"]),
+                req.connection.remoteAddress,
+                function () {
                     // Success callback
 
                     var id = qs["dns"] + ":" + qs["port"];
@@ -1048,7 +1036,7 @@ post("/announce", function (req, res) {
 // /list?format=html    - default (html) output
 // /list?lang=en&detail=id
 get("/list", function (req, res) {
-    sys.puts("GET " + req.url);
+    sys.puts("GET from " + req.connection.remoteAddress + " for " + req.url);
 
     // Possible values are: lang, detail
     var qs = url.parse(req.url, true).query;
