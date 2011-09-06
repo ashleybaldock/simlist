@@ -1066,19 +1066,32 @@ get("/list", function (req, res) {
             {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
         ));
 
-        var paksets = [{name: "pakset1", items: []}];
+        // Pakset ID string split by space, first part used to collate them
+
+
+        var pakset_names = [];
+        var paksets = {};
         for (var key in listing.model) {
             if (listing.model.hasOwnProperty(key)) {
                 var new_item = listing.model[key];
-                paksets[0]["items"].push(
-                    {detail: (key === qs["detail"]),
-                    data: listing.model[key]});
+                var pakstring = new_item["pak"].split(" ")[0];
+                if (pakset_names.indexOf(pakstring) < 0) {
+                    // Add new pakset name
+                    pakset_names.push(pakstring);
+                    paksets[pakstring] = [];
+                }
+                paksets[pakstring].push({detail: (key === qs["detail"]), data: new_item});
             }
+        }
+        // Map paksets into output format for mustache
+        var paksets_mapped = [];
+        for (var key in paksets) {
+            paksets_mapped.push({name: key, items: paksets[key]});
         }
 
         // Return html formatted listing of servers
         res.write(mustache.to_html(templates["list.html"],
-            {lang: qs["lang"], translate: translate, paksets: paksets}));
+            {lang: qs["lang"], translate: translate, paksets: paksets_mapped}));
 
         res.write(mustache.to_html(templates["langselect.html"],
             {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
