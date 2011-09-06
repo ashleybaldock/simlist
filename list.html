@@ -1,23 +1,24 @@
-<!--
-# Loop through all entries in "listing"
-# Display basic info for all of them
-# If detail() returns true, print detailed information
--->
+<div class="paksets">
+    <ul>
+{{#paksets}}
+        <li><a href="./list?lang={{lang}}#{{name}}">{{name}}</a></li>
+{{/paksets}}
+    </ul>
 
-<div>
+
 {{#paksets}}
     <div class="pakset">
+        <a name="{{name}}"></a>
         <h2 class="pakset_name">{{name}}</h2>
 {{#items}}
 {{#data}}
-        <a name="{{dns}}:{{port}}"></a>
-        <div>
-        <!-- left padding of say 10px gives red/green status background -->
+        <div class="st_{{st}}">
+            <a name="{{dns}}:{{port}}"></a>
             <a href="map_graphic_big.png"><img src="demomap.png" width="64" height="64" /></a>
             <div> <!-- Floated to right of image -->
                 <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}&nbsp;({{#translate}}status_{{st}}{{/translate}})</h3>
-                <p>Map dimensions: {{#size}}{{#x}}{{x}}x{{y}}{{/x}}{{^x}}{{#translate}}size_unknown{{/translate}}{{/x}}{{/size}}, current in-game date: {{#time}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}time_unknown{{/translate}}{{/mn}}{{/time}}&nbsp;(starting date: {{#start}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}start_unknown{{/translate}}{{/mn}}{{/start}})</p>
-                <p>There are 6 active players (10 player slots are unlocked). Currently 2 clients are connected.</p>
+                <p>{{#translate}}list_time_1{{/translate}}{{#size}}{{#x}}{{x}}x{{y}}{{/x}}{{^x}}{{#translate}}size_unknown{{/translate}}{{/x}}{{/size}}{{#translate}}list_time_2{{/translate}}{{#time}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}time_unknown{{/translate}}{{/mn}}{{/time}}&nbsp;{{#translate}}list_time_3{{/translate}}{{#start}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}start_unknown{{/translate}}{{/mn}}{{/start}}{{#translate}}list_time_4{{/translate}}</p>
+                <p>{{#translate}}list_players_1{{/translate}}{{active}}{{#translate}}list_players_2{{/translate}}({{locked}}{{#translate}}list_players_3{{/translate}}{{clients}}{{#translate}}list_players_4{{/translate}}</p>
 {{/data}}
 {{^detail}}
 {{#data}}
@@ -29,18 +30,20 @@
 {{#detail}}
 {{#data}}
                 <p><a href="./list?lang={{lang}}#{{dns}}:{{port}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
-                <p>Map detail: 34 towns, 1232 citizens, 345 factories, 97 vehicles and 537 stops.</p>
-                <p>The pakset version is:</p>
-                <p>The server game version is:</p>
-                <p>The last announce by this server was XXX seconds/minutes/hours/days ago, the next announce is [expected in YYY seconds/minutes/hours/days] [overdue by ZZZ seconds/minutes/hours/days]</p>
-                <p>Admin email</p>
-                <p>Pakset link</p>
-                <p>Addon link</p>
-                <p>Info link</p>
-                <p>Comments</p>
-                <p>DNS info:port</p>
-                <p>IPv4 addresses</p>
-                <p>IPv6 addresses</p>
+                <p>{{#translate}}list_map_1{{/translate}}{{towns}}{{#translate}}list_map_2{{/translate}}{{citizens}}{{#translate}}list_map_3{{/translate}}{{factories}}{{#translate}}list_map_4{{/translate}}{{vehicles}}{{#translate}}list_map_5{{/translate}}{{stops}}{{#translate}}list_map_6{{/translate}}</p>
+                <p>{{#translate}}list_pakset{{/translate}}{{pak}}</p>
+                <p>{{#translate}}list_rev{{/translate}}{{rev}}</p>
+{{/data}}
+{{#timing}}
+                <p>{{#translate}}list_announce_1{{/translate}}{{last}}&nbsp;{{#translate}}{{lastu}}{{/translate}}{{#translate}}list_announce_2{{/translate}}{{#next}}{{#translate}}list_announce_3{{/translate}}{{next}}&nbsp;{{nextu}}{{/next}}{{#odue}}{{#translate}}list_announce_4{{/translate}}{{odue}}&nbsp;{{#translate}}{{odueu}}{{/translate}}{{/odue}}{{#translate}}list_announce_5{[/translate}}.</p>
+{{/timing}}
+{{#data}}
+                <p>{{#translate}}list_email{{/translate}}{{#email}}<a href="mailto:{{email}}">{{email}}</a>{{/email}}{{^email}}{{#translate}}list_notset{{/translate}}{{/email}}</p>
+                <p>{{#translate}}list_pakurl{{/translate}}{{#pakurl}}<a href="{{pakurl}}">Download pakset</a>{{/pakurl}}{{^pakurl}}{{#translate}}list_notset{{/translate}}{{/pakurl}}</p>
+                <p>{{#translate}}list_infurl{{/translate}}{{#infurl}}<a href="{{infurl}}">Server information</a>{{/infurl}}{{^infurl}}{{#translate}}list_notset{{/translate}}{{/infurl}}</p>
+                <p>{{#translate}}list_comments{{/translate}}</p>
+                <p>{{#comments}}{{comments}}{{/comments}}{{^comments}}{{#translate}}list_notset{{/translate}}{{/comments}}</p>
+                <p>{{#translate}}list_dnsport{{/translate}}{{dns}}:{{port}}</p>
             </div>
         </div>
 {{/data}}

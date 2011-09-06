@@ -267,6 +267,66 @@ p.iddisplay {
 }
 
 
+div.paksets {
+    padding: 0.2em 0 0.2em 0;
+    margin: 0;
+    background-color: #FFF;
+    border-bottom: 1px solid #000;
+}
+div.paksets ul {
+}
+div.paksets li {
+    display: inline;
+}
+
+div.pakset {
+    margin: 0;
+    padding: 0;
+    background-color: #92CCF2;
+}
+
+div.pakset h2 {
+    margin: 0;
+    padding: 0.2em 0 0.2em 0;
+    border-bottom: 1px solid #000;
+}
+
+/* Red/green background + padding gives the online/offline stripe on the left */
+div.st_0 {
+    background-color: #F00;
+}
+div.st_1 {
+    background-color: #0F0;
+}
+div.pakset div {
+    padding-left: 16px;
+    border-bottom: 1px solid #000;
+}
+div.pakset div a {
+}
+div.pakset div img {
+    padding: 8px;
+    float: left;
+}
+div.pakset div div {
+    background-color: #FFF;
+    padding: 8px;
+    padding-left: 80px;
+    border-bottom: none;
+}
+div.pakset div div h3 {
+    margin: 0;
+    padding: 0;
+    padding-bottom: 0.5em;
+}
+div.pakset div div p {
+    margin: 0;
+    padding-top: 0.4em;
+    padding-bottom: 0.4em;
+}
+
+
+
 .r_a, .r_0, .r_2, .r_4, .r_6, .r_8, .r_10, .r_12, .r_14, .r_16 {
 background-color: #FAFDFE;
 }

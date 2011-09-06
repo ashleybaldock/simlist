@@ -49,6 +49,7 @@ var status_check = function () {
             if (cdate > prunedate) {
                 sys.puts("Removing server: " + key);
                 delete listing.model[key];
+                listing.sync = true;
             } else {
                 // Check for offline interval
                 var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * OFFLINE_MULTIPLIER;
@@ -58,6 +59,7 @@ var status_check = function () {
                 if (cdate > expiredate) {
                     sys.puts("Setting server: " + key + " to offline");
                     listing.model[key]["st"] = 0;
+                    listing.sync = true;
                 }
             }
         }
@@ -347,6 +349,9 @@ listing.ifields = {
             if (typeof failure !== "function") {
                 failure = function () { return false; };
             }
+            if (typeof reqip === "undefined") {
+                reqip = value;
+            }
 
             // DNS MUST be valid FQDN, IPv4 or IPv6
             // Additionally one of the IP addresses MUST match reqip, else invalid
@@ -373,6 +378,11 @@ listing.ifields = {
             }
 
             if (checkdomain(value)) {
+                if (value === reqip) {
+                    // This will only occur when reqip was originally undefined
+                    // i.e. when DNS validation is not needed (loading from disk)
+                    return success();
+                }
                 // Try resolving IPv6 first (AAAA records)
                 dns.resolve6(value, function (err, addresses) {
                     // if (err) throw err;
@@ -842,62 +852,57 @@ var translate = function() {
         manage_server: "Server Management",
         server_details: "Further information:",
         show_server_details: "Expand detailed server information",
+        hide_server_details: "Hide detailed server information",
         mapinfo_header: "Map information",
         otherinfo_header: "Other game information",
         en: "English",
         de: "German",
         fr: "French",
-        status: "Status:",
-        status_0: "Offline",
-        status_1: "Online",
-        datetime: "Last report:",
-        dns: "FQDN or IP address of server:",
-        reachable_ip4: "This server should be reachable via IPv4 with address: ",
-        unreachable_ip4: "This server has no IPv4 addresses listed in DNS",
-        reachable_ip6: "This server should be reachable via IPv6 with address: ",
-        unreachable_ip6: "This server has no IPv6 addresses listed in DNS",
-        ip4: "IPv4 address of server:",
-        ip6: "IPv6 address of server:",
-        port: "Server port:",
-        rev: "Server revision:",
-        email: "Send email to the server administrator",
-        pak: "Current pakset:",
-        name: "Server comment:",
-        default_name: "&lt;No Name Specified&gt;",
-        time: "In-game time:",
-        players: "List of player slots",
-        p_0: "Spectator",
-        p_1: "Public Service",
-        p_2: "Player 1",
-        p_3: "Player 2",
-        p_4: "Player 3",
-        p_5: "Player 4",
-        p_6: "Player 5",
-        p_7: "Player 6",
-        p_8: "Player 7",
-        p_9: "Player 8",
-        p_10: "Player 9",
-        p_11: "Player 10",
-        p_12: "Player 11",
-        p_13: "Player 12",
-        p_14: "Player 13",
-        p_15: "Player 14",
-        p_active_0: "Empty",
-        p_active_1: "Active",
-        p_locked_0: "Unlocked",
-        p_locked_1: "Locked",
-        pakurl_link: "Download pakset required to join this server",
-        addurl_link: "Download addons needed on this server",
-        infurl_link: "Further information about this server",
-        servertype_std: "Simutrans Standard",
-        servertype_exp: "Simutrans Experimental",
-        comments: "Comments:",
-        clients: "Connected clients:",
-        towns: "Towns:",
-        citizens: "Citizens:",
-        factories: "Factories:",
-        convoys: "Vehicles:",
-        stops: "Stops:",
+
+        list_time_1: "Map dimensions: ",
+        list_time_2: ", current in-game date: ",
+        list_time_3: "(starting date: ",
+        list_time_4: ")",
+
+        list_players_1: "There are ",
+        list_players_2: " active players (",
+        list_players_3: " out of 16 player slots are locked). Currently ",
+        list_players_4: " clients are connected.",
+
+        list_map_1: "Map detail: ",
+        list_map_2: " towns, ",
+        list_map_3: " citizens, ",
+        list_map_4: " factories, ",
+        list_map_5: " vehicles and ",
+        list_map_6: " stops.",
+
+        list_pakset: "The pakset version is: ",
+        list_rev: "The server game version is: ",
+
+        list_announce_1: "The last announce by this server was ",
+        list_announce_2: " ago, the next announce is ",
+        list_announce_3: "expected in ",
+        list_announce_4: "overdue by ",
+        list_announce_5: ".",
+
+        list_email: "Admin email: ",
+        list_pakurl: "Pakset link: ",
+        list_infurl: "Info link: ",
+        list_comments: "Comments:",
+        list_dnsport: "Server connection info: ",
+
+        list_notset: "Not set",
+
+        ms: "millisecond",
+        mss: "milliseconds",
+        sec: "second",
+        secs: "seconds",
+        min: "minute",
+        mins: "minutes",
+        hour: "hour",
+        hours: "hours",
+        day: "day",
+        days: "days",
 
         month_1: "January",
         month_2: "February",
@@ -914,37 +919,6 @@ var translate = function() {
         time_unknown: "Unknown",
         start_unknown: "Unknown",
         size_unknown: "Unknown",
-
-        addform_explain: "To create a new Simutrans server record click \"Create\" below. This will generate a unique ID code for your server which you can use to configure automated status updates. You will also be able to manage some server details via this website. Upon submission of the form you will be redirected to the management page for the newly created server.",
-        addform_header: "Add a server",
-        addform_std: "Simutrans Standard",
-        addform_exp: "Simutrans Experimental",
-        addform_submit: "Create Server",
-
-        selectform_header: "Select a Server",
-        selectform_id: "ID of server",
-        select_server_id: "Enter a Server ID to manage settings",
-        select_server_id_error: "Sorry, the ID specified is not registered. Please enter a valid ID or select 'Add Server' to register a new one.",
-
-        manageform_id_warn1: "This is your server ID:",
-        manageform_id_warn2: "Please make a note of it as you will require this ID to manage server properties on this website. You will also need to use this ID in your game configuration to identify your instance of Simutrans to the listing server. I recommend that you bookmark this page to ensure you do not lose the ID number.",
-        manageform_header: "Make changes to server settings",
-        manageform_explain1: "This field will be updated automatically by the game.",
-        manageform_explain2: "IP addresses are determined automatically from the server DNS/IP address field.",
-        manageform_name: "Listing name",
-        manageform_dns: "DNS name or IP address",
-        manageform_ip4: "IPv4 address",
-        manageform_ip6: "IPv6 address",
-        manageform_port: "Server port",
-        manageform_rev: "Simutrans version",
-        manageform_pak: "Pakset details",
-        manageform_email: "Manager email",
-        manageform_pakurl: "Pakset URL",
-        manageform_addurl: "Addons URL",
-        manageform_infurl: "Info URL",
-        manageform_comments: "Other comments",
-        manageform_setoffline: "Set server offline",
-        manageform_submit: "Submit changes",
 
     };
     return function(text, render) {
@@ -1069,6 +1043,83 @@ get("/list", function (req, res) {
         // Pakset ID string split by space, first part used to collate them
 
 
+        var get_times = function (date, aiv) {
+            // Takes last report date and the announce interval and returns object containing information about times
+            // last/lastu - How long ago was the last report (and units for the time quantity)
+            // next/nextu - How long until the next report (and units)
+            // odue/odueu - How long overdue is the next report (and units)
+
+            var units = function (time) {
+                // Return the best units for a time, ms, secs, mins, hours, days etc.
+                // Input must be +ve
+
+                if (time === 1) {
+                    unit = "ms";
+                } else if (time < 1000) {
+                    unit = "mss";
+                } else {
+                    time = time / 1000;
+                    if (time === 1) {
+                        unit = "sec";
+                    } else if (time < 60) {
+                        unit = "secs";
+                    } else {
+                        time = time / 60;
+                        if (time === 1) {
+                            unit = "min";
+                        } else if (time < 60) {
+                            unit = "mins";
+                        } else {
+                            time = time / 60;
+                            if (time === 1) {
+                                unit = "hour";
+                            } else if (time < 24) {
+                                unit = "hours";
+                            } else {
+                                time = time / 24;
+                                if (time === 1) {
+                                    unit = "day";
+                                } else {
+                                    unit = "days";
+                                }
+                            }
+                        }
+                    }
+                }
+                return [time, unit];
+            };
+
+            var cdate = (new Date()).getTime();
+
+            // Current minus last = ms since report
+            var last, lastu;
+            last  = units(cdate - date)[0];
+            lastu = units(cdate - date)[1];
+
+            // Difference between last date + interval and now
+            var offset = date + aiv * 1000 - cdate;
+            var next, nextu;
+            var odue, odueu;
+
+            if (offset > 0) {
+                // Positive offset, not overdue
+                next  = units(offset)[0];
+                nextu = units(offset)[1];
+            } else if (offset === 0) {
+                // No offset, due now
+                odue  = 1;
+                odueu = "ms";
+            } else {
+                // Negative offset, overdue
+                odue  = units(offset * -1)[0];
+                odueu = units(offset * -1)[1];
+            }
+
+            return {last: last, lastu: lastu, next: next, nextu: nextu, odue: odue, odueu: odueu};
+        };
+
+        // TODO - optimise this to only attach timing info for the expanded entry
+
         var pakset_names = [];
         var paksets = {};
         for (var key in listing.model) {
@@ -1080,7 +1131,7 @@ get("/list", function (req, res) {
                     pakset_names.push(pakstring);
                     paksets[pakstring] = [];
                 }
-                paksets[pakstring].push({detail: (key === qs["detail"]), data: new_item});
+                paksets[pakstring].push({detail: (key === qs["detail"]), data: new_item, timing: get_times(new_item["date"], new_item["aiv"])});
             }
         }
         // Map paksets into output format for mustache
