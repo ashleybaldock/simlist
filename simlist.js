@@ -115,7 +115,7 @@ for (var n in templatefiles) {
 }
 
 
-var notFound = function(req, res) {
+var not_found = function(req, res) {
     var NOT_FOUND = "Not Found\n";
     res.writeHead(404, {"Content-Type": "text/plain", "Content-Length": NOT_FOUND.length});
     res.end(NOT_FOUND);
@@ -133,12 +133,13 @@ var post = function (path, handler) {
 };
 
 var server = http.createServer(function (req, res) {
+    var handler;
     if (req.method === "GET" || req.method === "HEAD") {
-        var handler = map_get[url.parse(req.url).pathname] || notFound;
+        handler = map_get[url.parse(req.url).pathname] || not_found;
 
         handler(req, res);
     } else if (req.method === "POST") {
-        var handler = map_post[url.parse(req.url).pathname] || notFound;
+        handler = map_post[url.parse(req.url).pathname] || not_found;
 
         handler(req, res);
     }
@@ -146,10 +147,11 @@ var server = http.createServer(function (req, res) {
 
 var listen = function (port, host) {
     server.listen(port, host);
-    sys.puts("Server at http://" + (host || "127.0.0.1") + ":" + port.toString() + "/");
+    sys.puts("Server at http://" + (host || "0.0.0.0") + ":" + port.toString() + "/");
 };
 
 var close = function () { server.close(); };
+
 
 // do the work of checking the string
 var checkipv6 = function (str) {
@@ -172,6 +174,7 @@ var checkdomain = function (str) {
 
 
 var listing = {
+    // Set to true whenever any data changes to inform sync_monitor that a write to disk is needed
     sync: false,
 
     // Access methods
@@ -254,10 +257,12 @@ var listing = {
         }
     },
 
+/*
     filter: function (field, value, set) {
         // Return an array of server objects where the specified field equals the specified value
         // If set is provided then the search is done against that list of objects rather than the master one
     },
+*/
 
     update_datestamp: function (id) {
         // Set datestamp of specified ID to now()
@@ -292,37 +297,6 @@ var listing = {
             }
         }
         return false;
-    },
-
-    update_server_player: function (id, player, active, locked) {
-        // Update the specified player's status
-        if (player >= 0 && player <= 15) {
-            if (active == 0 || active == 1) {
-                if (locked == 0 || locked == 1) {
-                    listing[id]["players"][player] = [player, active, locked];
-                    sync = true;
-                    return true;
-                }
-            }
-        } else {
-            return false;
-        }
-    },
-    update_internal_field: function (id, field, value) {
-        if (this.lookup(id)) {
-            if (field in this.vfields || field in this.ifields) {
-                this.model[id][field] = value;
-                sync = true;
-                return true;
-            }
-        }
-        return false;
-    },
-    update_server_date: function (id) {
-        // Set last update datetime to now
-        listing[id]["date"] = (new Date()).getTime();
-        sync = true;        // We should sync data to disk next time sync check runs
-        return true;
     }
 };
 
@@ -584,6 +558,7 @@ listing.vfields = {
         },
         update: listing.update_field,
     },
+/*
     "players": {
         default: function () { return [
                 {"p":  0, "a": 0, "l": 0},
@@ -627,6 +602,7 @@ listing.vfields = {
             }
             return false;
         },
+*/
         validate: function (value) {
             sys.puts(JSON.stringify(value));
             // Must be an array + must contain exactly 16 items
@@ -827,6 +803,7 @@ get("/demomap.png", static_handler("demomap.png"));
 
 
 // Map available languages into object for formatting page template
+// TODO do this once on server startup for all languages and then just select one
 var make_lang = function (current, baseurl) {
     var cur = function (lang) {
         return lang === current;
@@ -845,16 +822,13 @@ var make_lang = function (current, baseurl) {
     return ret;
 };
 
+// TODO load in translations from file on startup
 var translate = function() {
     var translations = {
-        add_server: "Add New Server",
         server_listing: "Server Listing",
-        manage_server: "Server Management",
-        server_details: "Further information:",
         show_server_details: "Expand detailed server information",
         hide_server_details: "Hide detailed server information",
-        mapinfo_header: "Map information",
-        otherinfo_header: "Other game information",
+
         en: "English",
         de: "German",
         fr: "French",
