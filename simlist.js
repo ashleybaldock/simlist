@@ -602,7 +602,6 @@ listing.vfields = {
             }
             return false;
         },
-*/
         validate: function (value) {
             sys.puts(JSON.stringify(value));
             // Must be an array + must contain exactly 16 items
@@ -646,6 +645,7 @@ listing.vfields = {
             return false;
         }
     },
+*/
     "active": {
         // number of active players
         default: function () { return 0; },
@@ -920,9 +920,11 @@ post("/announce", function (req, res) {
 
     var body="";
     req.on("data", function (data) {
+        sys.puts("POST from " + req.connection.remoteAddress + ", received data: " + data);
         body += data;
     });
     req.on("end", function () {
+        sys.puts("POST from " + req.connection.remoteAddress + ", done receiving data");
         var qs = querystring.parse(body);
         // process defaults
 
@@ -958,7 +960,7 @@ post("/announce", function (req, res) {
                     res.writeHead(202, {"Content-Type": "text/html"});
                     res.end("<a href=\"./list\">back to list</a>");
                     
-                }, function () {
+                }, function () {        // TODO - check that this function is actually invoked on error!    // TODO
                     // Failure callback
                     // Invalid ID, return Bad Request error
                     var err = "Bad Request - Missing DNS field or value invalid";
