@@ -166,6 +166,10 @@ var checkdomain = function (str) {
     // From http://www.mczen.com/blog/post/viewitemaspxid3deed1cc4f-92a4-4485-85b2-21356a3d18e0.aspx
     return (/^([a-zA-Z0-9]([-a-zA-Z0-9]+)?\.)+([a-zA-Z]{2,7}\.?)$/.test(str));
 };
+var checkemail = function (str) {
+    // From http://www.regular-expressions.info/email.html
+    return (/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,6}$/i.test(str));
+};
 
 
 
@@ -318,9 +322,11 @@ listing.ifields = {
         validate: function (value, reqip, success, failure) {
             // Setup dummy functions (for validate without callbacks)
             if (typeof success !== "function") {
+                sys.puts("dns.validate - override success()");
                 success = function () { return true; };
             }
             if (typeof failure !== "function") {
+                sys.puts("dns.validate - override failure()");
                 failure = function () { return false; };
             }
             if (typeof reqip === "undefined") {
@@ -355,6 +361,7 @@ listing.ifields = {
                 if (value === reqip) {
                     // This will only occur when reqip was originally undefined
                     // i.e. when DNS validation is not needed (loading from disk)
+                    sys.puts("dns.validate - success (matched DNS name without lookup)");
                     return success();
                 }
                 // Try resolving IPv6 first (AAAA records)
@@ -382,9 +389,14 @@ listing.ifields = {
                             });
                         }
                         // If we've got here then no addresses match, invoke failure
+                        sys.puts("dns.validate - failure (no matching IPv4 or IPv6 addresses in DNS)");
                         return failure();
                     });
                 });
+            } else {
+                // Invalid dns name, no further options -> failure
+                sys.puts("dns.validate - failure (Invalid domain name)");
+                return failure();
             }
         },
         update: function () { return false; }   // Immutable
@@ -460,7 +472,7 @@ listing.vfields = {
         default: function () { return ""; },
         parse: function(rawvalue) { return rawvalue.toString(); },
         validate: function (value) {
-            return true;                        // TODO (email)
+            return (typeof value === typeof "str" && checkemail(value));
         },
         update: listing.update_field,
     },
@@ -960,15 +972,23 @@ post("/announce", function (req, res) {
                     res.writeHead(202, {"Content-Type": "text/html"});
                     res.end("<a href=\"./list\">back to list</a>");
                     
-                }, function () {        // TODO - check that this function is actually invoked on error!    // TODO
+                }, function () {
                     // Failure callback
                     // Invalid ID, return Bad Request error
-                    var err = "Bad Request - Missing DNS field or value invalid";
+                    var err = "Bad Request - DNS field invalid";
                     sys.puts(err);
                     res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
                     res.end(err);
                     return;
                 });
+            } else {
+                // Failure callback
+                // Invalid ID, return Bad Request error
+                var err = "Bad Request - Missing DNS field";
+                sys.puts(err);
+                res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
+                res.end(err);
+                return;
             }
         } else {
             // Invalid ID, return Bad Request error
