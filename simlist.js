@@ -1,15 +1,47 @@
+// 
+// Simutrans Listing Server
+// 
+// Version 1.0
+// 
+// 
+// Copyright © 2011 Timothy Baldock. All Rights Reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+// 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// 3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission from the author.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+// 
+
+
+// TODO
+// Compile node.js for OpenBSD
+// Service monitoring + global error handling
+// Modify game's listing download function to process CSV format
+// Also needs to request full/matching lists when appropriate
+
+
+// Configuration
+
 HOST = null;                            // Server listening IP (or null for all)
 PORT = 8001;                            // Server listing port
 OFFLINE_MULTIPLIER = 2;                 // Number of server announce intervals before server marked offline
 PRUNE_INTERVAL = 604800;                // Length of time before inactive servers are removed from the listing
 STATUS_CHECK_INTERVAL = 60;             // Interval between checks of server status
 SYNC_FILE = "/var/simlist/listing";     // File to write out internal data model to
+MUSTACHE = "/usr/local/bin/nodemodules/mustache"    // Path to mustache.js
 SYNC_INTERVAL = 30;                     // Sync internal data model to disk every XX seconds, default 30
 DEBUG = false;                          // Turns on debugging interfaces
+PROCESS_USER = "www-data"               // User to setuid to after dropping privs
 
 
+// Internals
 
-var mustache = require("/usr/local/bin/nodemodules/mustache");
+var mustache = require(MUSTACHE);
 var http = require("http");
 var fs = require("fs");
 var sys = require("sys");
@@ -21,11 +53,9 @@ var querystring = require("querystring");
 var av_lang = ["en", "de", "fr"];
 var av_formats = ["html", "csv"];
 
-// when the daemon started
 var starttime = (new Date()).getTime();
 
 var mem = process.memoryUsage();
-// every 10 seconds poll for the memory.
 setInterval(function () {
     mem = process.memoryUsage();
 }, 10*1000);
@@ -69,6 +99,15 @@ var status_check = function () {
 
 
 var sync_monitor;           // timeoutId for db file sync
+var sync_to_disk = function () {
+    // Synchronous write to disk
+    if (listing.sync) {
+        var output = JSON.stringify(listing.model);
+        fs.writeFileSync(SYNC_FILE, output);
+        listing.sync = false;
+        console.log("Synchronous write to file complete");
+    }
+};
 var sync_check = function () {
     sys.puts("Checking sync status");
     // Check value of listing.sync, if true we should sync the current state of the listing to file (JSON.stringify) and set listing.sync to false
@@ -101,9 +140,6 @@ var templatefiles = [
     "announce.html",
     "langselect.html",
     "list.html",
-    "add_form.html",
-    "manage_manageform.html",
-    "manage_selectform.html"
 ];
 var templates = {};
 
@@ -145,12 +181,38 @@ var server = http.createServer(function (req, res) {
     }
 });
 
-var listen = function (port, host) {
-    server.listen(port, host);
-    sys.puts("Server at http://" + (host || "0.0.0.0") + ":" + port.toString() + "/");
+var StartServer = function (port, host) {
+    // Start server 
+    if (server) {
+        server.listen(port, host, function () {
+            if (PROCESS_USER) {
+                console.log("Server at http://" + (host || "0.0.0.0") + ":" + port.toString() + "/");
+                try {
+                    process.setuid(PROCESS_USER);
+                    console.log("Dropped privileges and now running as user: " + PROCESS_USER);
+                }
+                catch (err) {
+                    console.log("Error: Failed to drop privileges, aborting execution!");
+                    process.exit(1);
+                }
+            }
+        });
+    }
 };
 
-var close = function () { server.close(); };
+var StopServer = function () {
+    console.log("Stopping server...");
+    if (server) {
+        server.close();
+    }
+
+    // Write out working model
+    sync_to_disk();
+
+    process.exit(0);
+};
+
+process.on("SIGINT", StopServer);
 
 
 // do the work of checking the string
@@ -570,94 +632,6 @@ listing.vfields = {
         },
         update: listing.update_field,
     },
-/*
-    "players": {
-        default: function () { return [
-                {"p":  0, "a": 0, "l": 0},
-                {"p":  1, "a": 0, "l": 0},
-                {"p":  2, "a": 0, "l": 0},
-                {"p":  3, "a": 0, "l": 0},
-                {"p":  4, "a": 0, "l": 0},
-                {"p":  5, "a": 0, "l": 0},
-                {"p":  6, "a": 0, "l": 0},
-                {"p":  7, "a": 0, "l": 0},
-                {"p":  8, "a": 0, "l": 0},
-                {"p":  9, "a": 0, "l": 0},
-                {"p": 10, "a": 0, "l": 0},
-                {"p": 11, "a": 0, "l": 0},
-                {"p": 12, "a": 0, "l": 0},
-                {"p": 13, "a": 0, "l": 0},
-                {"p": 14, "a": 0, "l": 0},
-                {"p": 15, "a": 0, "l": 0}
-            ]; },
-        // If additional fields added to spec they go here
-        suboutputfields: ["p", "a", "l"],
-        parse: function (rawvalue) {
-            // Raw value looks like:
-            // 0,0,0;1,0,0;2,0,0;3,0,0;4,0,0;...
-            // Split by comma, then parse into dict set
-            // If this fails at any point return false
-            if (typeof rawvalue === typeof "") {
-                var output = [];
-                var vals = rawvalue.split(";");
-                for (var i=0; i<16; i++) {
-                    var suboutput = {};
-                    var subvals = vals[i].split(",");
-                    for (var j=0; j<subvals.length; j++) {
-                        if (j < this.suboutputfields.length) {
-                            suboutput[this.suboutputfields[j]] = parseInt(subvals[j]);
-                        }
-                    }
-                    output.push(suboutput);
-                }
-                return output;
-            }
-            return false;
-        },
-        validate: function (value) {
-            sys.puts(JSON.stringify(value));
-            // Must be an array + must contain exactly 16 items
-            if (typeof value === typeof [] && value.length === 16) {
-                // Each dict must contain the fields specified in player_fields
-                for (var i=0; i<value.length; i++) {
-                    for (var j=0; j<this.suboutputfields.length; j++) {
-                        if (!value[i].hasOwnProperty(this.suboutputfields[j])) {
-                            return false;
-                        }
-                    }
-                    // Each field must conform to its own spec
-                    // TODO - these would be better stored as validator functions in the suboutputfields object for flexible validation
-                        // "p" field must be number > 0
-                        // "a" field must be number 0 or 1
-                        // "l" field must be number 0 or 1
-                    if (value[i]["p"] < 0) {
-                        return false;
-                    }
-                    if (value[i]["a"] < 0 || value[i]["a"] > 1) {
-                        return false;
-                    }
-                    if (value[i]["l"] < 0 || value[i]["l"] > 1) {
-                        return false;
-                    }
-                }
-                // If we got this far it must be valid
-                return true;
-            }
-            return false;
-        },
-        update: function (id, field, value) {
-                                                    // TODO
-            // Data expected in form
-            var candidate = this.parse(value);
-            if (this.validate(candidate)) {
-                listing.model[id]["players"] = candidate;
-                listing.sync = true;
-                return true;
-            }
-            return false;
-        }
-    },
-*/
     "active": {
         // number of active players
         default: function () { return 0; },
@@ -834,12 +808,60 @@ var make_lang = function (current, baseurl) {
     return ret;
 };
 
+var timeformat = function () {
+    // Format a time in nice human-readable way
+    // Takes a time in ms and returns:
+    // AA day(s), BB hour(s), CC minute(s), DD second(s), EE millisecond(s)
+    return function(text, render) {
+        var time = parseInt(render(text));
+
+        var timestr = "";
+
+        var days  = Math.floor(time / 1000 / 60 / 60 / 24);
+        var hours = Math.floor(time / 1000 / 60 / 60) - days * 24;
+        var mins  = Math.floor(time / 1000 / 60) - days * 24 * 60 - hours * 60;
+        var secs  = Math.floor(time / 1000) - days * 24 * 60 * 60 - hours * 60 * 60 - mins * 60;
+        var ms    = time - days * 24 * 60 * 60 * 1000 - hours * 60 * 60 * 1000 - mins * 60 * 1000 - secs * 1000;
+
+        if (days == 1) {
+            timestr = timestr + days.toString() + " day "
+        } else if (days > 1) {
+            timestr = timestr + days.toString() + " days "
+        }
+        if (hours == 1) {
+            timestr = timestr + hours.toString() + " hour "
+        } else if (hours > 1) {
+            timestr = timestr + hours.toString() + " hours "
+        }
+        if (mins == 1) {
+            timestr = timestr + mins.toString() + " min "
+        } else if (mins > 1) {
+            timestr = timestr + mins.toString() + " mins "
+        }
+        if (secs == 1) {
+            timestr = timestr + secs.toString() + " sec "
+        } else if (secs > 1) {
+            timestr = timestr + secs.toString() + " secs "
+        }
+        if (ms == 1) {
+            timestr = timestr + ms.toString() + " ms "
+        } else if (ms > 1) {
+            timestr = timestr + ms.toString() + " mss "
+        }
+
+        return timestr;
+    };
+};
+
 // TODO load in translations from file on startup
-var translate = function() {
+var translate = function () {
     var translations = {
         server_listing: "Server Listing",
-        show_server_details: "Expand detailed server information",
-        hide_server_details: "Hide detailed server information",
+        show_server_detail: "Show detailed server information",
+        hide_server_detail: "Hide detailed server information",
+
+        status_0: "Offline",
+        status_1: "Online",
 
         en: "English",
         de: "German",
@@ -1041,77 +1063,33 @@ get("/list", function (req, res) {
 
         var get_times = function (date, aiv) {
             // Takes last report date and the announce interval and returns object containing information about times
-            // last/lastu - How long ago was the last report (and units for the time quantity)
-            // next/nextu - How long until the next report (and units)
-            // odue/odueu - How long overdue is the next report (and units)
-
-            var units = function (time) {
-                // Return the best units for a time, ms, secs, mins, hours, days etc.
-                // Input must be +ve
-
-                if (time === 1) {
-                    unit = "ms";
-                } else if (time < 1000) {
-                    unit = "mss";
-                } else {
-                    time = time / 1000;
-                    if (time === 1) {
-                        unit = "sec";
-                    } else if (time < 60) {
-                        unit = "secs";
-                    } else {
-                        time = time / 60;
-                        if (time === 1) {
-                            unit = "min";
-                        } else if (time < 60) {
-                            unit = "mins";
-                        } else {
-                            time = time / 60;
-                            if (time === 1) {
-                                unit = "hour";
-                            } else if (time < 24) {
-                                unit = "hours";
-                            } else {
-                                time = time / 24;
-                                if (time === 1) {
-                                    unit = "day";
-                                } else {
-                                    unit = "days";
-                                }
-                            }
-                        }
-                    }
-                }
-                return [time, unit];
-            };
+            // last - How long ago was the last report (and units for the time quantity)
+            // next - How long until the next report (and units)
+            // odue - How long overdue is the next report (and units)
 
             var cdate = (new Date()).getTime();
 
             // Current minus last = ms since report
-            var last, lastu;
-            last  = units(cdate - date)[0];
-            lastu = units(cdate - date)[1];
+            var last;
+            last  = cdate - date;
 
             // Difference between last date + interval and now
             var offset = date + aiv * 1000 - cdate;
-            var next, nextu;
-            var odue, odueu;
+            var next;
+            var odue;
 
             if (offset > 0) {
                 // Positive offset, not overdue
-                next  = units(offset)[0];
-                nextu = units(offset)[1];
+                next  = offset;
             } else if (offset === 0) {
                 // No offset, due now
                 odue  = 1;
-                odueu = "ms";
             } else {
                 // Negative offset, overdue
-                odue  = units(offset * -1)[0];
-                odueu = units(offset * -1)[1];
+                odue  = offset * -1;
             }
 
-            return {last: last, lastu: lastu, next: next, nextu: nextu, odue: odue, odueu: odueu};
+            return {last: last, next: next, odue: odue};
         };
 
         // TODO - optimise this to only attach timing info for the expanded entry
@@ -1138,7 +1116,8 @@ get("/list", function (req, res) {
 
         // Return html formatted listing of servers
         res.write(mustache.to_html(templates["list.html"],
-            {lang: qs["lang"], translate: translate, paksets: paksets_mapped}));
+            {lang: qs["lang"], translate: translate, timeformat: timeformat,
+             paksets: paksets_mapped}));
 
         res.write(mustache.to_html(templates["langselect.html"],
             {available_lang: make_lang(qs["lang"], urlbase), translate: translate}
@@ -1149,16 +1128,34 @@ get("/list", function (req, res) {
     } else if (qs["format"] === "csv") {
         res.writeHead(200, {"Content-Type": "text/csv"});
 
+        var csve = function (text) {
+            // Prepare value for entry into CSV file
+            // If it contains a comma, quote it, if it contains quotes encode them
+            while (text.indexOf("\"") !== -1) {
+                text = text.replace("\"", "");
+            }
+            if (text.indexOf(",") !== -1) {
+                text = "\"" + text + "\"";
+            }
+            return text;
+        };
+
+        // Filter returned results according to request
+        // Filter by "rev", "pak"
+        // Only return matching results
+        // (Client only specifies this if desired, else send full list)
+
+        // Format output as CSV, any string containing a comma should be quoted
+        // Due to validation of input to fields, no need to validate output of the same
+        // However only servers where all values differ from defaults should be output
         for (var key in listing.model) {
             if (listing.model.hasOwnProperty(key)) {
-                // Format output as CSV, any string containing a comma should be quoted
-                // Due to validation of input to fields, no need to validate output of the same
-                // However only servers where all values differ from defaults should be output
-                if (listing.model[key]["dns"] !== listing.vfields["dns"].default() &&
-                    listing.model[key]["port"] !== listing.vfields["port"].default() &&
-                    listing.model[key]["rev"] !== listing.vfields["rev"].default() &&
-                    listing.model[key]["pak"] !== listing.vfields["pak"].default()) {
-                    res.write(listing.model[key]["dns"] + ":" + listing.model[key]["port"] + "," + listing.model[key]["rev"] + "," + listing.model[key]["pak"] + "\n");
+                if (listing.model[key]["dns"] && listing.model[key]["port"] && listing.model[key]["name"] && listing.model[key]["rev"] && listing.model[key]["pak"]) {
+                    if (!qs["rev"] || qs["rev"] === listing.model[key]["rev"]) {
+                        if (!qs["pak"] || qs["pak"] === listing.model[key]["pak"]) {
+                            res.write(csve(listing.model[key]["name"]) + "," + csve(listing.model[key]["dns"] + ":" + listing.model[key]["port"]) + "," + csve(listing.model[key]["rev"]) + "," + csve(listing.model[key]["pak"]) + "\n");
+                        }
+                    }
                 }
             }
         }
@@ -1182,7 +1179,7 @@ listing.read();
 status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);
 sync_monitor   = setTimeout(sync_check, SYNC_INTERVAL*1000);
 
-listen(Number(process.env.PORT || PORT), HOST);
+StartServer(Number(process.env.PORT || PORT), HOST);
 
 
 

@@ -18,11 +18,11 @@
             <div> <!-- Floated to right of image -->
                 <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}&nbsp;({{#translate}}status_{{st}}{{/translate}})</h3>
                 <p>{{#translate}}list_time_1{{/translate}}{{#size}}{{#x}}{{x}}x{{y}}{{/x}}{{^x}}{{#translate}}size_unknown{{/translate}}{{/x}}{{/size}}{{#translate}}list_time_2{{/translate}}{{#time}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}time_unknown{{/translate}}{{/mn}}{{/time}}&nbsp;{{#translate}}list_time_3{{/translate}}{{#start}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}start_unknown{{/translate}}{{/mn}}{{/start}}{{#translate}}list_time_4{{/translate}}</p>
-                <p>{{#translate}}list_players_1{{/translate}}{{active}}{{#translate}}list_players_2{{/translate}}({{locked}}{{#translate}}list_players_3{{/translate}}{{clients}}{{#translate}}list_players_4{{/translate}}</p>
+                <p>{{#translate}}list_players_1{{/translate}}{{active}}{{#translate}}list_players_2{{/translate}}{{locked}}{{#translate}}list_players_3{{/translate}}{{clients}}{{#translate}}list_players_4{{/translate}}</p>
 {{/data}}
 {{^detail}}
 {{#data}}
-                <p><a href="./list?lang={{lang}}&detail={{dns}}:{{port}}#{{dns}}:{{port}}">{{#translate}}show_server_details{{/translate}}</a></p>
+                <p><a href="./list?lang={{lang}}&detail={{dns}}:{{port}}#{{dns}}:{{port}}">{{#translate}}show_server_detail{{/translate}}</a></p>
             </div>
         </div>
 {{/data}}
@@ -30,12 +30,24 @@
 {{#detail}}
 {{#data}}
                 <p><a href="./list?lang={{lang}}#{{dns}}:{{port}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
-                <p>{{#translate}}list_map_1{{/translate}}{{towns}}{{#translate}}list_map_2{{/translate}}{{citizens}}{{#translate}}list_map_3{{/translate}}{{factories}}{{#translate}}list_map_4{{/translate}}{{vehicles}}{{#translate}}list_map_5{{/translate}}{{stops}}{{#translate}}list_map_6{{/translate}}</p>
+                <p>{{#translate}}list_map_1{{/translate}}{{towns}}{{#translate}}list_map_2{{/translate}}{{citizens}}{{#translate}}list_map_3{{/translate}}{{factories}}{{#translate}}list_map_4{{/translate}}{{convoys}}{{#translate}}list_map_5{{/translate}}{{stops}}{{#translate}}list_map_6{{/translate}}</p>
                 <p>{{#translate}}list_pakset{{/translate}}{{pak}}</p>
                 <p>{{#translate}}list_rev{{/translate}}{{rev}}</p>
 {{/data}}
 {{#timing}}
-                <p>{{#translate}}list_announce_1{{/translate}}{{last}}&nbsp;{{#translate}}{{lastu}}{{/translate}}{{#translate}}list_announce_2{{/translate}}{{#next}}{{#translate}}list_announce_3{{/translate}}{{next}}&nbsp;{{nextu}}{{/next}}{{#odue}}{{#translate}}list_announce_4{{/translate}}{{odue}}&nbsp;{{#translate}}{{odueu}}{{/translate}}{{/odue}}{{#translate}}list_announce_5{[/translate}}.</p>
+                <p>
+                    {{#translate}}list_announce_1{{/translate}}
+                    {{#timeformat}}{{last}}{{/timeformat}}
+                    {{#translate}}list_announce_2{{/translate}}
+                    {{#next}}
+                        {{#translate}}list_announce_3{{/translate}}
+                        {{#timeformat}}{{next}}{{/timeformat}}
+                    {{/next}}
+                    {{#odue}}
+                        {{#translate}}list_announce_4{{/translate}}
+                        {{#timeformat}}{{odue}}{{/timeformat}}
+                    {{/odue}}
+                    {{#translate}}list_announce_5{{/translate}}</p>
 {{/timing}}
 {{#data}}
                 <p>{{#translate}}list_email{{/translate}}{{#email}}<a href="mailto:{{email}}">{{email}}</a>{{/email}}{{^email}}{{#translate}}list_notset{{/translate}}{{/email}}</p>
@@ -52,125 +64,3 @@
     </div>
 {{/paksets}}
 </div>
-
-<!-- <div>
-<table class="main">
-{{#paksets}}
-    <tr>
-        <th class="pakset_name" colspan="4">{{name}}</th>
-    </tr>
-{{#items}}
-{{#data}}
-    <a name="{{did}}"></a>
-    <tr class="listing_upper">
-        <td class="status_{{st}}">{{#translate}}status_{{st}}{{/translate}}</td>
-        <td>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}</td>
-        <td>{{#translate}}servertype_{{type}}{{/translate}}</td>
-        <td>{{#translate}}rev{{/translate}} {{#rev}}{{rev}}{{/rev}}{{^rev}}&lt;No data&gt;{{/rev}}</td>
-    </tr>
-{{/data}}
-    <tr class="listing_lower{{^detail}} end_listing{{/detail}}">
-{{#data}}
-        <td>{{#translate}}datetime{{/translate}} {{date}}</td>
-        <td>{{#dns}}{{dns}}{{/dns}}{{^dns}}&lt;No DNS name set&gt;{{/dns}}:{{port}}</td>
-        <td>{{#translate}}pak{{/translate}} {{#pak}}{{pak}}{{/pak}}{{^pak}}&lt;No data&gt;{{/pak}}</td>
-{{/data}}
-
-{{^detail}}
-{{#data}}
-        <td><a href="./list?lang={{lang}}&detail={{did}}#{{did}}">{{#translate}}show_server_details{{/translate}}</a></td>
-    </tr>
-{{/data}}
-{{/detail}}
-
-{{#detail}}
-{{#data}}
-        <td><a href="./list?lang={{lang}}#{{did}}">{{#translate}}hide_server_detail{{/translate}}</a></td>
-    </tr>
-    <tr class="end_listing">
-        <td colspan="4">
-            <table>
-                <tr valign="top">
-                    <td>
-            <table class="mapinfo">
-                <tr>
-                    <th colspan="2">{{#translate}}mapinfo_header{{/translate}}</th>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#translate}}time{{/translate}}</td><td>{{#time}}{{mn}}, {{yr}}{{/time}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#translate}}size{{/translate}}</td><td>{{#size}}{{x}}x{{y}}{{/size}}</td>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#translate}}clients{{/translate}}</td><td>{{clients}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#translate}}towns{{/translate}}</td><td>{{towns}}</td>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#translate}}citizens{{/translate}}</td><td>{{citizens}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#translate}}factories{{/translate}}</td><td>{{factories}}</td>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#translate}}convoys{{/translate}}</td><td>{{convoys}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#translate}}stops{{/translate}}</td><td>{{stops}}</td>
-                </tr>
-            </table>
-                    </td>
-                    <td>
-            <table class="otherinfo">
-                <tr>
-                    <th>{{#translate}}otherinfo_header{{/translate}}</th>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#ip4}}{{#translate}}reachable_ip4{{/translate}}{{ip4}}{{/ip4}}{{^ip4}}{{#translate}}unreachable_ip4{{/translate}}{{/ip4}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#ip6}}{{#translate}}reachable_ip6{{/translate}}{{ip6}}{{/ip6}}{{^ip6}}{{#translate}}unreachable_ip6{{/translate}}{{/ip6}}
-                </tr>
-                <tr class="r_a">
-                    <td>{{#email}}<a href="mailto:{{email}}">{{#translate}}email{{/translate}}</a>{{/email}}{{^email}}&lt;No maintainer email set&gt;{{/email}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#pakurl}}<a href="{{pakurl}}">{{#translate}}pakurl_link{{/translate}}</a>{{/pakurl}}{{^pakurl}}&lt;No pakset URL set&gt;{{/pakurl}}</td>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#addurl}}<a href="{{addurl}}">{{#translate}}addurl_link{{/translate}}</a>{{/addurl}}{{^addurl}}&lt;No addons URL set&gt;{{/addurl}}</td>
-                </tr>
-                <tr class="r_b">
-                    <td>{{#infurl}}<a href="{{infurl}}">{{#translate}}infurl_link{{/translate}}</a>{{/infurl}}{{^infurl}}&lt;No info URL set&gt;{{/infurl}}</td>
-                </tr>
-                <tr class="r_a">
-                    <td>{{#translate}}comments{{/translate}}<br />{{#comments}}{{comments}}{{/comments}}{{^comments}}&lt;No comments set&gt;{{/comments}}</td>
-                </tr>
-            </table>
-                    </td>
-                    <td>
-            <table class="playerinfo">
-                <tr>
-                    <th colspan="3">{{#translate}}players{{/translate}}</th>
-                </tr>
-{{#players}}
-                <tr class="r_{{p}}">
-                    <td class="p_{{p}}">{{#translate}}p_{{p}}{{/translate}}</td>
-                    <td>{{#translate}}p_active_{{a}}{{/translate}}</td>
-                    <td>{{#translate}}p_locked_{{l}}{{/translate}}</td>
-                </tr>
-{{/players}}
-            </table>
-                    </td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-{{/data}}
-{{/detail}}
-{{/items}}
-{{/paksets}}
-</table>
-</div> -->
