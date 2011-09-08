@@ -63,7 +63,7 @@ setInterval(function () {
 
 var status_monitor;         // timeoutId for the status checks
 var status_check = function () {
-    sys.puts("Checking server statuses");
+    console.log("Checking server statuses");
     // Check the last report date of all listed servers against the current date with respect to their announce interval
     // any which haven't been heard from in OFFLINE_MULTIPLIER times the interval should be set to offline status
     // Also check the last report date against the current date with respect to the PRUNE_INTERVAL
@@ -71,23 +71,23 @@ var status_check = function () {
     var cdate = (new Date()).getTime();
     for (var key in listing.model) {
         if (listing.model.hasOwnProperty(key) && listing.model[key]["st"] > 0) {
-            sys.puts("Checking server: " + key + " aiv: " + listing.model[key]["aiv"]);
+            console.log("Checking server: " + key + " aiv: " + listing.model[key]["aiv"]);
             // Check for prune interval
             var prunedate = listing.model[key]["date"] + PRUNE_INTERVAL * 1000;
-            sys.puts("prunedate: " + prunedate + ", (" + prunedate/1000 + ")");
-            sys.puts("difference: " + (cdate - prunedate));
+            console.log("prunedate: " + prunedate + ", (" + prunedate/1000 + ")");
+            console.log("difference: " + (cdate - prunedate));
             if (cdate > prunedate) {
-                sys.puts("Removing server: " + key);
+                console.log("Removing server: " + key);
                 delete listing.model[key];
                 listing.sync = true;
             } else {
                 // Check for offline interval
                 var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * OFFLINE_MULTIPLIER;
-                sys.puts("cdate:      " + cdate + ", (" + cdate/1000 + ")");
-                sys.puts("expiredate: " + expiredate + ", (" + expiredate/1000 + ")");
-                sys.puts("difference: " + (cdate - expiredate));
+                console.log("cdate:      " + cdate + ", (" + cdate/1000 + ")");
+                console.log("expiredate: " + expiredate + ", (" + expiredate/1000 + ")");
+                console.log("difference: " + (cdate - expiredate));
                 if (cdate > expiredate) {
-                    sys.puts("Setting server: " + key + " to offline");
+                    console.log("Setting server: " + key + " to offline");
                     listing.model[key]["st"] = 0;
                     listing.sync = true;
                 }
@@ -109,18 +109,18 @@ var sync_to_disk = function () {
     }
 };
 var sync_check = function () {
-    sys.puts("Checking sync status");
+    console.log("Checking sync status");
     // Check value of listing.sync, if true we should sync the current state of the listing to file (JSON.stringify) and set listing.sync to false
     if (listing.sync) {
         listing.sync = false;
         var output = JSON.stringify(listing.model);
         fs.writeFile(SYNC_FILE, output, function (err) {
             if (err) {
-                sys.puts("Warning: Unable to sync model to file!");
+                console.error("Warning: Unable to sync model to file!");
                 listing.sync = true;
                 // throw err;
             } else {
-                sys.puts("Sync complete");
+                console.log("Sync complete");
             }
             // Schedule next check
             sync_monitor = setTimeout(sync_check, SYNC_INTERVAL*1000);
@@ -145,7 +145,7 @@ var templates = {};
 
 for (var n in templatefiles) {
     if (templatefiles.hasOwnProperty(n)) {
-        sys.puts("loading file: " + templatefiles[n] + "...");
+        console.log("loading file: " + templatefiles[n] + "...");
         templates[templatefiles[n]] = fs.readFileSync(templatefiles[n], "utf8");
     }
 }
@@ -267,7 +267,7 @@ var listing = {
         for (var key in this.vfields) {
             new_server[key] = this.vfields[key].default();
         }
-        sys.puts("New server created, ID: " + newid);
+        console.log("New server created, ID: " + newid);
         // Add a new server to the listing
         this.model[newid] = new_server;
         // Return true if added successfully
@@ -286,12 +286,12 @@ var listing = {
         // Validate all properties using their validator functions to ensure loaded data isn't corrupt
         this.model = {};
 
-        sys.puts("this.model: " + JSON.stringify(this.model));
-        sys.puts("testlist: " + JSON.stringify(testlist));
+        console.log("this.model: " + JSON.stringify(this.model));
+        console.log("testlist: " + JSON.stringify(testlist));
 
         // For each ID record
         for (var key in testlist) {
-            sys.puts("key: " + key);
+            console.log("key: " + key);
 
             // Rebuild keys from the DNS and port fields of each record, if these fields are missing then it is an invalid record
 
@@ -312,13 +312,13 @@ var listing = {
                             }
                         }
                     } else {
-                        sys.puts("Failed to add item with ID: " + newid + " - not unique!");
+                        console.error("Failed to add item with ID: " + newid + " - not unique!");
                     }
                 } else {
-                    sys.puts("Failed to add item with ID: " + newid + " - failed to validate dns!");
+                    console.error("Failed to add item with ID: " + newid + " - failed to validate dns!");
                 }
             } else {
-                sys.puts("Failed to add item with ID: " + newid + " - failed to validate port!");
+                console.error("Failed to add item with ID: " + newid + " - failed to validate port!");
             }
         }
     },
@@ -340,7 +340,7 @@ var listing = {
     update_field: function (id, field, value) {
         // First call parse method, which will take input as it comes in
         // over the wire and convert it into the correct representation
-        sys.puts("update_field for: id: " + id + ", field: " + field + ", value: " + value);
+        console.log("update_field for: id: " + id + ", field: " + field + ", value: " + value);
         var parsedval = listing.vfields[field].parse(value);
 
         // Then check with the validate method, if this returns true it's safe
@@ -384,11 +384,11 @@ listing.ifields = {
         validate: function (value, reqip, success, failure) {
             // Setup dummy functions (for validate without callbacks)
             if (typeof success !== "function") {
-                sys.puts("dns.validate - override success()");
+                console.log("dns.validate - override success()");
                 success = function () { return true; };
             }
             if (typeof failure !== "function") {
-                sys.puts("dns.validate - override failure()");
+                console.log("dns.validate - override failure()");
                 failure = function () { return false; };
             }
             if (typeof reqip === "undefined") {
@@ -400,10 +400,10 @@ listing.ifields = {
             if (checkipv6(value)) {
                 if (value === reqip) {
                     // Exactly one IPv6 address which matches the reqip
-                    sys.puts("dns.validate - success (matched IPv6 address)");
+                    console.log("dns.validate - success (matched IPv6 address)");
                     return success();
                 } else {
-                    sys.puts("dns.validate - failure (valid IPv6 but does not match request IP");
+                    console.error("dns.validate - failure (valid IPv6 but does not match request IP");
                     return failure();
                 }
             }
@@ -411,10 +411,10 @@ listing.ifields = {
             if (checkipv4(value)) {
                 if (value === reqip) {
                     // Exactly one IPv4 address which matches the reqip
-                    sys.puts("dns.validate - success (matched IPv4 address)");
+                    console.log("dns.validate - success (matched IPv4 address)");
                     return success();
                 } else {
-                    sys.puts("dns.validate - failure (valid IPv4 but does not match request IP");
+                    console.error("dns.validate - failure (valid IPv4 but does not match request IP");
                     return failure();
                 }
             }
@@ -423,7 +423,7 @@ listing.ifields = {
                 if (value === reqip) {
                     // This will only occur when reqip was originally undefined
                     // i.e. when DNS validation is not needed (loading from disk)
-                    sys.puts("dns.validate - success (matched DNS name without lookup)");
+                    console.log("dns.validate - success (matched DNS name without lookup)");
                     return success();
                 }
                 // Try resolving IPv6 first (AAAA records)
@@ -433,7 +433,7 @@ listing.ifields = {
                         // Got at least one v6 address, compare them against reqip
                         addresses.forEach(function (element, index, array) {
                             if (element === reqip) {
-                                sys.puts("dns.validate - success (matched IPv6 address from DNS)");
+                                console.log("dns.validate - success (matched IPv6 address from DNS)");
                                 return success();
                             }
                         });
@@ -445,19 +445,19 @@ listing.ifields = {
                             // Got at least one v4 address, compare them against reqip
                             addresses.forEach(function (element, index, array) {
                                 if (element === reqip) {
-                                    sys.puts("dns.validate - success (matched IPv4 address from DNS)");
+                                    console.log("dns.validate - success (matched IPv4 address from DNS)");
                                     return success();
                                 }
                             });
                         }
                         // If we've got here then no addresses match, invoke failure
-                        sys.puts("dns.validate - failure (no matching IPv4 or IPv6 addresses in DNS)");
+                        console.error("dns.validate - failure (no matching IPv4 or IPv6 addresses in DNS)");
                         return failure();
                     });
                 });
             } else {
                 // Invalid dns name, no further options -> failure
-                sys.puts("dns.validate - failure (Invalid domain name)");
+                console.error("dns.validate - failure (Invalid domain name)");
                 return failure();
             }
         },
@@ -579,7 +579,7 @@ listing.vfields = {
                     "yr": parseInt(rawvalue.toString().split(",")[1])};
         },
         validate: function (value) {
-            sys.puts(JSON.stringify(value));
+            console.log(JSON.stringify(value));
             if (typeof value === typeof {}) {
                 if (value.hasOwnProperty("yr") && typeof value["yr"] === typeof 0 && value["yr"] > 0) {
                     if (value.hasOwnProperty("mn") && typeof value["mn"] === typeof 0 && value["mn"] >= 0 && value["mn"] < 12) {
@@ -600,7 +600,7 @@ listing.vfields = {
                     "yr": parseInt(rawvalue.toString().split(",")[1])};
         },
         validate: function (value) {
-            sys.puts(JSON.stringify(value));
+            console.log(JSON.stringify(value));
             if (typeof value === typeof {}) {
                 if (value.hasOwnProperty("yr") && typeof value["yr"] === typeof 0 && value["yr"] > 0) {
                     if (value.hasOwnProperty("mn") && typeof value["mn"] === typeof 0 && value["mn"] >= 0 && value["mn"] < 12) {
@@ -620,7 +620,7 @@ listing.vfields = {
                     "y": parseInt(rawvalue.toString().split(",")[1])};
         },
         validate: function (value) {
-            sys.puts(JSON.stringify(value));
+            console.log(JSON.stringify(value));
             if (typeof value === typeof {}) {
                 if (value.hasOwnProperty("x") && typeof value["x"] === typeof 0 && value["x"] > 0) {
                     if (value.hasOwnProperty("y") && typeof value["y"] === typeof 0 && value["y"] > 0) {
@@ -752,10 +752,10 @@ var static_handler = function (filename) {
             return;
         }
 
-        sys.puts("GET " + filename);
+        console.log("GET " + filename);
         fs.readFile(filename, function (err, data) {
             if (err) {
-                sys.puts("Error loading " + filename);
+                console.error("Error loading " + filename);
             } else {
                 body = data;
                 headers = {"Content-Type": content_type, "Content-Length": body.length};
@@ -944,21 +944,21 @@ var translate = function () {
 // /announce
 get("/announce", function (req, res) {
     // Return warning that this url must be POSTed to + link to /list
-    sys.puts("GET " + req.url);
+    console.log("GET " + req.url);
     res.writeHead(405, {"Content-Type": "text/html", "Allow": "POST"});
     res.write(mustache.to_html(templates["announce.html"], {}));
     res.end();
 });
 post("/announce", function (req, res) {
-    sys.puts("POST from " + req.connection.remoteAddress + " to " + req.url);
+    console.log("POST from " + req.connection.remoteAddress + " to " + req.url);
 
     var body="";
     req.on("data", function (data) {
-        sys.puts("POST from " + req.connection.remoteAddress + ", received data: " + data);
+        console.log("POST from " + req.connection.remoteAddress + ", received data: " + data);
         body += data;
     });
     req.on("end", function () {
-        sys.puts("POST from " + req.connection.remoteAddress + ", done receiving data");
+        console.log("POST from " + req.connection.remoteAddress + ", done receiving data");
         var qs = querystring.parse(body);
         // process defaults
 
@@ -981,7 +981,7 @@ post("/announce", function (req, res) {
                     for (var key in qs)
                     {
                         if (qs.hasOwnProperty(key)) {
-                            sys.puts("post data - " + key + ": " + qs[key]);
+                            console.log("post data - " + key + ": " + qs[key]);
                             listing.validate_field(id, key, qs[key]);
                         }
                     }
@@ -998,7 +998,7 @@ post("/announce", function (req, res) {
                     // Failure callback
                     // Invalid ID, return Bad Request error
                     var err = "Bad Request - DNS field invalid";
-                    sys.puts(err);
+                    console.error(err);
                     res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
                     res.end(err);
                     return;
@@ -1007,7 +1007,7 @@ post("/announce", function (req, res) {
                 // Failure callback
                 // Invalid ID, return Bad Request error
                 var err = "Bad Request - Missing DNS field";
-                sys.puts(err);
+                console.error(err);
                 res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
                 res.end(err);
                 return;
@@ -1015,7 +1015,7 @@ post("/announce", function (req, res) {
         } else {
             // Invalid ID, return Bad Request error
             var err = "Bad Request - Missing port field or value invalid";
-            sys.puts(err);
+            console.error(err);
             res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
             res.end(err);
             return;
@@ -1028,17 +1028,17 @@ post("/announce", function (req, res) {
 // /list?format=html    - default (html) output
 // /list?lang=en&detail=id
 get("/list", function (req, res) {
-    sys.puts("GET from " + req.connection.remoteAddress + " for " + req.url);
+    console.log("GET from " + req.connection.remoteAddress + " for " + req.url);
 
     // Possible values are: lang, detail
     var qs = url.parse(req.url, true).query;
     // Process defaults
     if (!qs["lang"] || av_lang.indexOf(qs["lang"]) < 0) {
-        sys.puts("No language specified, defaulting to English");
+        console.log("No language specified, defaulting to English");
         qs["lang"] = "en";
     }
     if (!qs["format"]) {
-        sys.puts("No format specified, defaulting to HTML");
+        console.log("No format specified, defaulting to HTML");
         qs["format"] = "html";
     }
 
