@@ -19,16 +19,12 @@
 
 
 // TODO
-// Compile node.js for OpenBSD
 // Service monitoring + global error handling
-// Modify game's listing download function to process CSV format
-// Also needs to request full/matching lists when appropriate
-
 
 // Configuration
 
-HOST = null;                            // Server listening IP (or null for all)
-PORT = 8001;                            // Server listing port
+HOST = "servers.simutrans.org";         // Server listening IP (or null for all)
+PORT = 80;                              // Server listing port
 OFFLINE_MULTIPLIER = 2;                 // Number of server announce intervals before server marked offline
 PRUNE_INTERVAL = 604800;                // Length of time before inactive servers are removed from the listing
 STATUS_CHECK_INTERVAL = 60;             // Interval between checks of server status
@@ -41,25 +37,27 @@ PROCESS_USER = "www-data"               // User to setuid to after dropping priv
 
 // Internals
 
-var mustache = require(MUSTACHE);
-var http = require("http");
-var fs = require("fs");
-var sys = require("sys");
-var url = require("url");
-var dns = require("dns");
+var mustache    = require(MUSTACHE);
+var http        = require("http");
+var fs          = require("fs");
+var sys         = require("sys");
+var url         = require("url");
+var dns         = require("dns");
 var querystring = require("querystring");
 
 // Set up available languages/formats
-var av_lang = ["en", "de", "fr"];
-var av_formats = ["html", "csv"];
+var av_lang     = ["en", "de", "fr"];
+var av_formats  = ["html", "csv"];
 
-var starttime = (new Date()).getTime();
+var starttime   = (new Date()).getTime();
 
 var mem = process.memoryUsage();
 setInterval(function () {
     mem = process.memoryUsage();
 }, 10*1000);
 
+
+// Monitors - execute housekeeping tasks at regular intervals
 
 var status_monitor;         // timeoutId for the status checks
 var status_check = function () {
@@ -132,8 +130,8 @@ var sync_check = function () {
 };
 
 
+// Templates
 
-// Load all templates
 var templatefiles = [
     "header.html",
     "footer.html",
@@ -150,11 +148,18 @@ for (var n in templatefiles) {
     }
 }
 
-
+// Any file which there isn't a handler for should get a proper 404 error
 var not_found = function(req, res) {
     var NOT_FOUND = "Not Found\n";
     res.writeHead(404, {"Content-Type": "text/plain", "Content-Length": NOT_FOUND.length});
     res.end(NOT_FOUND);
+};
+
+// Server errors should produce a generic 500 error
+var internal_error = function(req, res) {
+    var ERROR = "Internal Server Error\n";
+    res.writeHead(500, {"Content-Type": "text/plain", "Content-Length": ERROR.length});
+    res.end(ERROR);
 };
 
 // Maps containing paths and handlers (maybe same path for GET+POST with different actions)
@@ -431,24 +436,32 @@ listing.ifields = {
                     // if (err) throw err;
                     if (!err && addresses.length > 0) {
                         // Got at least one v6 address, compare them against reqip
+                        var found = false;
                         addresses.forEach(function (element, index, array) {
                             if (element === reqip) {
+                                found = true;
                                 console.log("dns.validate - success (matched IPv6 address from DNS)");
-                                return success();
                             }
                         });
+                        if (found) {
+                            return success();
+                        }
                     }
                     // No v6 addresses or none of them matches, try v4
                     dns.resolve4(value, function (err, addresses) {
                         // if (err) throw err;
                         if (!err && addresses.length > 0) {
                             // Got at least one v4 address, compare them against reqip
+                            var found = false;
                             addresses.forEach(function (element, index, array) {
                                 if (element === reqip) {
                                     console.log("dns.validate - success (matched IPv4 address from DNS)");
-                                    return success();
+                                    found = true;
                                 }
                             });
+                            if (found) {
+                                return success();
+                            }
                         }
                         // If we've got here then no addresses match, invoke failure
                         console.error("dns.validate - failure (no matching IPv4 or IPv6 addresses in DNS)");
@@ -506,7 +519,17 @@ listing.vfields = {
         },
         update: listing.update_field,
     },
+    // Server game revision, numeric
     "rev": {
+        default: function () { return ""; },
+        parse: function(rawvalue) { return rawvalue.toString(); },
+        validate: function (value) {
+            return (typeof value === typeof "str" && value.length < 100);
+        },
+        update: listing.update_field,
+    },
+    // Server game verbose version information
+    "ver": {
         default: function () { return ""; },
         parse: function(rawvalue) { return rawvalue.toString(); },
         validate: function (value) {
@@ -885,7 +908,7 @@ var translate = function () {
         list_map_6: " stops.",
 
         list_pakset: "The pakset version is: ",
-        list_rev: "The server game version is: ",
+        list_ver: "The server game version is: ",
 
         list_announce_1: "The last announce by this server was ",
         list_announce_2: " ago, the next announce is ",
@@ -968,41 +991,41 @@ post("/announce", function (req, res) {
             // Valid port field
             if (qs["dns"]) {
                 listing.ifields["dns"].validate(listing.ifields["dns"].parse(qs["dns"]),
-                req.connection.remoteAddress,
-                function () {
-                    // Success callback
+                    req.connection.remoteAddress,
+                    function () {
+                        // Success callback
 
-                    var id = qs["dns"] + ":" + qs["port"];
+                        var id = qs["dns"] + ":" + qs["port"];
 
-                    if (!listing.lookup(id)) {
-                        listing.new(id, listing.ifields["dns"].parse(qs["dns"]), listing.ifields["port"].parse(qs["port"]));
-                    }
-
-                    for (var key in qs)
-                    {
-                        if (qs.hasOwnProperty(key)) {
-                            console.log("post data - " + key + ": " + qs[key]);
-                            listing.validate_field(id, key, qs[key]);
+                        if (!listing.lookup(id)) {
+                            listing.new(id, listing.ifields["dns"].parse(qs["dns"]), listing.ifields["port"].parse(qs["port"]));
                         }
-                    }
 
-                    // Set date of this request, to keep track of server status in future
-                    listing.update_datestamp(id);
+                        for (var key in qs)
+                        {
+                            if (qs.hasOwnProperty(key)) {
+                                console.log("post data - " + key + ": " + qs[key]);
+                                listing.validate_field(id, key, qs[key]);
+                            }
+                        }
 
-                    // Respond with just 202 Accepted header + single error code digit
-                    // TODO replace with a better HTTP response given that we know if it worked now
-                    res.writeHead(202, {"Content-Type": "text/html"});
-                    res.end("<a href=\"./list\">back to list</a>");
-                    
-                }, function () {
-                    // Failure callback
-                    // Invalid ID, return Bad Request error
-                    var err = "Bad Request - DNS field invalid";
-                    console.error(err);
-                    res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
-                    res.end(err);
-                    return;
-                });
+                        // Set date of this request, to keep track of server status in future
+                        listing.update_datestamp(id);
+
+                        // Respond with just 202 Accepted header + single error code digit
+                        // TODO replace with a better HTTP response given that we know if it worked now
+                        res.writeHead(202, {"Content-Type": "text/html"});
+                        res.end("<a href=\"./list\">back to list</a>");
+                        
+                    }, function () {
+                        // Failure callback
+                        // Invalid ID, return Bad Request error
+                        var err = "Bad Request - DNS field invalid";
+                        console.error(err);
+                        res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
+                        res.end(err);
+                        return;
+                    });
             } else {
                 // Failure callback
                 // Invalid ID, return Bad Request error
@@ -1047,7 +1070,7 @@ get("/list", function (req, res) {
 
         // Write header
         res.write(mustache.to_html(templates["header.html"],
-            {title: "servers.simutrans.org - Server listing", lang: qs["lang"], translate: translate}));
+            {title: HOST + " - Server listing", lang: qs["lang"], translate: translate}));
 
         // Write language selector
         var urlbase = "./list";
@@ -1125,9 +1148,8 @@ get("/list", function (req, res) {
         // Write the footer and close the request
         res.write(mustache.to_html(templates["footer.html"], {}));
         res.end();
-    } else if (qs["format"] === "csv") {
-        res.writeHead(200, {"Content-Type": "text/csv"});
 
+    } else if (qs["format"] === "csv") {
         var csve = function (text) {
             // Prepare value for entry into CSV file
             // If it contains a comma, quote it, if it contains quotes encode them
@@ -1140,27 +1162,26 @@ get("/list", function (req, res) {
             return text;
         };
 
-        // Filter returned results according to request
-        // Filter by "rev", "pak"
-        // Only return matching results
-        // (Client only specifies this if desired, else send full list)
+        var response_text = "";
 
         // Format output as CSV, any string containing a comma should be quoted
         // Due to validation of input to fields, no need to validate output of the same
         // However only servers where all values differ from defaults should be output
+
+        // TODO without a name field upload the dns/port field in its place
+        // TODO without a rev or pak field, upload entry or not?
+
         for (var key in listing.model) {
             if (listing.model.hasOwnProperty(key)) {
                 if (listing.model[key]["dns"] && listing.model[key]["port"] && listing.model[key]["name"] && listing.model[key]["rev"] && listing.model[key]["pak"]) {
-                    if (!qs["rev"] || qs["rev"] === listing.model[key]["rev"]) {
-                        if (!qs["pak"] || qs["pak"] === listing.model[key]["pak"]) {
-                            res.write(csve(listing.model[key]["name"]) + "," + csve(listing.model[key]["dns"] + ":" + listing.model[key]["port"]) + "," + csve(listing.model[key]["rev"]) + "," + csve(listing.model[key]["pak"]) + "\n");
-                        }
-                    }
+                    response_text = response_text + csve(listing.model[key]["name"]) + "," + csve(listing.model[key]["dns"] + ":" + listing.model[key]["port"]) + "," + csve(listing.model[key]["rev"].toString()) + "," + csve(listing.model[key]["pak"]) + "\n";
                 }
             }
         }
 
-        res.end();
+        res.writeHead(200, {"Content-Type": "text/plain", "Content-Length": response_text.length});
+
+        res.end(response_text);
     } else {
         // 501 error
         var err = "501 Not Implemented - The specified output format is not supported, supported formats are: " + av_formats.toString();
