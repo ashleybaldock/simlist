@@ -22,22 +22,28 @@
 // Service monitoring + global error handling
 
 // Configuration
-
-HOST = "servers.simutrans.org";         // Server listening IP (or null for all)
-PORT = 80;                              // Server listing port
-OFFLINE_MULTIPLIER = 2;                 // Number of server announce intervals before server marked offline
-PRUNE_INTERVAL = 604800;                // Length of time before inactive servers are removed from the listing
-STATUS_CHECK_INTERVAL = 60;             // Interval between checks of server status
-SYNC_FILE = "/var/simlist/listing";     // File to write out internal data model to
-MUSTACHE = "/usr/local/bin/nodemodules/mustache"    // Path to mustache.js
-SYNC_INTERVAL = 30;                     // Sync internal data model to disk every XX seconds, default 30
-DEBUG = false;                          // Turns on debugging interfaces
-PROCESS_USER = "www-data"               // User to setuid to after dropping privs
+// Read from config file config.json in same directory
+// LISTEN = ["2001:470:9034::3", "82.113.155.82"];
+/*
+ * host                     DNS name of server (for display purposes)
+ * listen                   String, IPv6 address to listen for connections on
+ * listen4                  String, IPv4 address to listen for connections on
+ * port                     Int, port to listen for connections on
+ * offline_multiplier       Int, multipied by server's announce interval to get inactivity time
+ * prune_interval           Int, seconds of inactivity before servers are removed
+ * status_check_interval    Int, seconds between checking of server status
+ * sync_file                String, abs path to location for sync file
+ * mustache                 String, abs path to mustache.js
+ * sync_interval            Int, seconds between syncs of file to disk
+ * debug                    Bool, enable debugging
+ * process_user             String, User to setuid to
+ * max_connections          Number, max connections to one listen IP
+ */
 
 
 // Internals
 
-var mustache    = require(MUSTACHE);
+var mustache    = require(config.mustache);
 var http        = require("http");
 var fs          = require("fs");
 var sys         = require("sys");
@@ -63,15 +69,15 @@ var status_monitor;         // timeoutId for the status checks
 var status_check = function () {
     console.log("Checking server statuses");
     // Check the last report date of all listed servers against the current date with respect to their announce interval
-    // any which haven't been heard from in OFFLINE_MULTIPLIER times the interval should be set to offline status
-    // Also check the last report date against the current date with respect to the PRUNE_INTERVAL
+    // any which haven't been heard from in config.offline_multiplier times the interval should be set to offline status
+    // Also check the last report date against the current date with respect to the config.prune_interval
     // any not heard from in this interval should be removed entirely
     var cdate = (new Date()).getTime();
     for (var key in listing.model) {
         if (listing.model.hasOwnProperty(key) && listing.model[key]["st"] > 0) {
             console.log("Checking server: " + key + " aiv: " + listing.model[key]["aiv"]);
             // Check for prune interval
-            var prunedate = listing.model[key]["date"] + PRUNE_INTERVAL * 1000;
+            var prunedate = listing.model[key]["date"] + config.prune_interval * 1000;
             console.log("prunedate: " + prunedate + ", (" + prunedate/1000 + ")");
             console.log("difference: " + (cdate - prunedate));
             if (cdate > prunedate) {
@@ -80,7 +86,7 @@ var status_check = function () {
                 listing.sync = true;
             } else {
                 // Check for offline interval
-                var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * OFFLINE_MULTIPLIER;
+                var expiredate = listing.model[key]["date"] + listing.model[key]["aiv"] * 1000 * config.offline_multiplier;
                 console.log("cdate:      " + cdate + ", (" + cdate/1000 + ")");
                 console.log("expiredate: " + expiredate + ", (" + expiredate/1000 + ")");
                 console.log("difference: " + (cdate - expiredate));
@@ -92,7 +98,7 @@ var status_check = function () {
             }
         }
     }
-    status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);
+    status_monitor = setTimeout(status_check, config.status_check_interval*1000);
 };
 
 
@@ -101,7 +107,7 @@ var sync_to_disk = function () {
     // Synchronous write to disk
     if (listing.sync) {
         var output = JSON.stringify(listing.model);
-        fs.writeFileSync(SYNC_FILE, output);
+        fs.writeFileSync(config.sync_file, output);
         listing.sync = false;
         console.log("Synchronous write to file complete");
     }
@@ -112,7 +118,7 @@ var sync_check = function () {
     if (listing.sync) {
         listing.sync = false;
         var output = JSON.stringify(listing.model);
-        fs.writeFile(SYNC_FILE, output, function (err) {
+        fs.writeFile(config.sync_file, output, function (err) {
             if (err) {
                 console.error("Warning: Unable to sync model to file!");
                 listing.sync = true;
@@ -121,11 +127,11 @@ var sync_check = function () {
                 console.log("Sync complete");
             }
             // Schedule next check
-            sync_monitor = setTimeout(sync_check, SYNC_INTERVAL*1000);
+            sync_monitor = setTimeout(sync_check, config.sync_interval*1000);
         });
     } else {
         // Schedule next check
-        sync_monitor = setTimeout(sync_check, SYNC_INTERVAL*1000);
+        sync_monitor = setTimeout(sync_check, config.sync_interval*1000);
     }
 };
 
@@ -173,7 +179,7 @@ var post = function (path, handler) {
     map_post[path] = handler;
 };
 
-var server = http.createServer(function (req, res) {
+var handle_req = function (req, res) {
     var handler;
     if (req.method === "GET" || req.method === "HEAD") {
         handler = map_get[url.parse(req.url).pathname] || not_found;
@@ -183,27 +189,53 @@ var server = http.createServer(function (req, res) {
         handler = map_post[url.parse(req.url).pathname] || not_found;
 
         handler(req, res);
-    }
-});
+}
 
-var StartServer = function (port, host) {
-    // Start server 
-    if (server) {
-        server.listen(port, host, function () {
-            if (PROCESS_USER) {
-                console.log("Server at http://" + (host || "0.0.0.0") + ":" + port.toString() + "/");
+// Two servers for IPv6 and IPv4
+var server = http.createServer(handle_req);
+var server4 = http.createServer(handle_req);
+
+server.maxConnections = 0;
+server4.maxConnections = 0;
+
+// TODO - permit arbitrary number of listen directives
+var StartServer = function () {
+    var drop_count = 0;
+    var drop_privs = function () {
+        // Only do this once all connections bound
+        // So only does anything on the second call (or however many addresses we have)
+        drop_count += 1;
+        if (drop_count === 2) {
+            if (config.process_user) {
                 try {
-                    process.setuid(PROCESS_USER);
-                    console.log("Dropped privileges and now running as user: " + PROCESS_USER);
+                    process.setuid(config.process_user);
+                    console.log("Dropped privileges and now running as user: " + config.process_user);
                 }
                 catch (err) {
                     console.log("Error: Failed to drop privileges, aborting execution!");
                     process.exit(1);
                 }
             }
+            server.maxConnections = config.max_connections;
+            server4.maxConnections = config.max_connections;
+
+        }
+    };
+    // Start server(s)
+    if (server) {
+        server.listen(config.port, config.listen, function () {
+            console.log("Server at http://[" + config.listen + "]:" + config.port.toString() + "/");
+            drop_privs();
+        });
+    }
+    if (server4) {
+        server4.listen(config.port, config.listen4, function () {
+            console.log("Server at http://" + config.listen4 + ":" + config.port.toString() + "/");
+            drop_privs();
         });
     }
 };
+
 
 var StopServer = function () {
     console.log("Stopping server...");
@@ -281,7 +313,7 @@ var listing = {
 
     read: function () {
         // Read listings in from file (load) (synchronous)
-        var input = fs.readFileSync(SYNC_FILE);
+        var input = fs.readFileSync(config.sync_file);
         if (input.length > 0) {
             // Pass file contents through JSON
             var testlist = JSON.parse(input);
@@ -770,7 +802,7 @@ var static_handler = function (filename) {
     var content_type = mimelookup(extname(filename));
 
     function load_response_data(callback) {
-        if (body && headers && !DEBUG) {
+        if (body && headers && !config.debug) {
             callback();
             return;
         }
@@ -782,7 +814,7 @@ var static_handler = function (filename) {
             } else {
                 body = data;
                 headers = {"Content-Type": content_type, "Content-Length": body.length};
-                if (!DEBUG) {
+                if (!config.debug) {
                     headers["Cache-Control"] = "public";
                 }
                 callback();
@@ -1070,7 +1102,7 @@ get("/list", function (req, res) {
 
         // Write header
         res.write(mustache.to_html(templates["header.html"],
-            {title: HOST + " - Server listing", lang: qs["lang"], translate: translate}));
+            {title: config.host + " - Server listing", lang: qs["lang"], translate: translate}));
 
         // Write language selector
         var urlbase = "./list";
@@ -1197,11 +1229,11 @@ get("/list", function (req, res) {
 listing.read();
 
 // Set up monitor processes
-status_monitor = setTimeout(status_check, STATUS_CHECK_INTERVAL*1000);
-sync_monitor   = setTimeout(sync_check, SYNC_INTERVAL*1000);
+status_monitor = setTimeout(status_check, config.status_check_interval*1000);
+sync_monitor   = setTimeout(sync_check, config.sync_interval*1000);
 
-StartServer(Number(process.env.PORT || PORT), HOST);
 
+StartServer();
 
 
 
