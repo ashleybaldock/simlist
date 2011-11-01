@@ -17,9 +17,23 @@
 // THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 // 
 
-
 // TODO
-// Service monitoring + global error handling
+// Service monitoring
+// Global error handling
+// Translation support
+// Final fixes for CSS/layout
+// init.d script
+// Logging to syslog, and from there to rotated file
+
+
+// Load in basic node.js functionality
+var http        = require("http");
+var fs          = require("fs");
+var sys         = require("sys");
+var url         = require("url");
+var dns         = require("dns");
+var querystring = require("querystring");
+
 
 // Configuration
 // Read from config file config.json in same directory
@@ -40,16 +54,25 @@
  * max_connections          Number, max connections to one listen IP
  */
 
+var rawconfig = fs.readFileSync("config.json");
+if (rawconfig.length > 0) {
+    // Pass file contents through JSON
+    // TODO: Better validation of configuration data + error if invalid
+    var config = JSON.parse(rawconfig);
+} else {
+    // Invalid config file
+    console.log("ERROR: Invalid config file!");
+    process.exit(1);
+}
+
+
+// Validate all properties using their validator functions to ensure loaded data isn't corrupt
+this.model = {};
 
 // Internals
 
+// Load in mustache
 var mustache    = require(config.mustache);
-var http        = require("http");
-var fs          = require("fs");
-var sys         = require("sys");
-var url         = require("url");
-var dns         = require("dns");
-var querystring = require("querystring");
 
 // Set up available languages/formats
 var av_lang     = ["en", "de", "fr"];
@@ -1223,7 +1246,6 @@ get("/list", function (req, res) {
 });
 
 
-// GET -> form, POST -> submit
 
 // Read model from file
 listing.read();
@@ -1234,9 +1256,5 @@ sync_monitor   = setTimeout(sync_check, config.sync_interval*1000);
 
 
 StartServer();
-
-
-
-
 
 
