@@ -265,6 +265,9 @@ var StopServer = function () {
     if (server) {
         server.close();
     }
+    if (server4) {
+        server4.close();
+    }
 
     // Write out working model
     sync_to_disk();
