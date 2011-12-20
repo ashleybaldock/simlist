@@ -1,0 +1,9 @@
+Simlist - Simutrans listing server
+
+simlist.js should be run with a recent version of Node (0.5.4+), logging goes to stdout/stderr. Configuration is via the config.json file (make a copy of config.json.default).
+
+Currently the server can listen on two IP addresses only (e.g. 0.0.0.0 & ::, or two arbitrary addresses). Specify via the listen and listen4 directives in the config file.
+
+Persistent data is saved to a file, you can change where this file is stored via the sync_file config directive.
+
+By default simlist will bind to port 80 on the addresses specified, then drop root privs and run as www-data. You can configure this all via the config file.
