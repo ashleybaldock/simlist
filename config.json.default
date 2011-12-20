@@ -1,15 +1,15 @@
 {
-    host: "servers.simutrans.org",
-    listen: "::",
-    listen4: "0.0.0.0",
-    port: 80,
-    offline_multiplier: 2,
-    prune_interval: 604800,
-    status_check_interval: 60,
-    sync_file: "/var/simlist/listing",
-    mustache: "/usr/local/bin/nodemodules/mustache",
-    sync_interval: 30,
-    debug: false,
-    process_user: "www-data",
-    max_connections: 100
+    "host": "servers.simutrans.org",
+    "listen": "::",
+    "listen4": "0.0.0.0",
+    "port": 80,
+    "offline_multiplier": 2,
+    "prune_interval": 604800,
+    "status_check_interval": 60,
+    "sync_file": "/var/simlist/listing",
+    "mustache": "/usr/local/bin/nodemodules/mustache",
+    "sync_interval": 30,
+    "debug": false,
+    "process_user": "www-data",
+    "max_connections": 100
 }
