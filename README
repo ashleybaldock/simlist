@@ -29,3 +29,27 @@ simlist:
 /var/simlist/simutrans/simlist.js
 pidfile:
 /var/simlist/simlist-simutrans.pid
+
+
+Logging
+
+Simlist by default logs to stdout/stderr, the init script will automatically pipe these into an instance of the logger utility which writes them to syslog. You may wish to filter the syslog output into a specific file for easy debugging. The following config line in your syslog config will do this:
+
+:syslogtag, contains, "simlist-simutrans" /var/log/simlist/simlist-simutrans.log
+& ~
+
+You'll probably also want to do log rotation, again, add this to your logrotate config:
+
+/var/log/simlist/simlist-simutrans.log{
+    size 1M
+    missingok
+    rotate 10
+    compress
+    delaycompress
+    notifempty
+    create 644 root adm
+    sharedscripts
+    postrotate
+        invoke-rc.d rsyslog reload > /dev/null
+    endscript
+}

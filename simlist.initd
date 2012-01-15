@@ -58,10 +58,16 @@ case $action in
     ;;
     restart|reload|force-reload)
         echo "Attempting to restart simlist..."
-        start-stop-daemon --start --quiet --pidfile $pidfile --exec /bin/sh -- -c "$runscript"
-        echo "simlist stopped successfully"
+        if start-stop-daemon --oknodo --stop --pidfile $pidfile --exec $pathtonode; then
+            echo "simlist stopped successfully"
+            RET=0
+        else
+            echo "simlist stopping failed!"
+            RET=1
+            exit $RET
+        fi
         sleep 1
-        if start-stop-daemon --start --quiet --pidfile $pidfile --exec $runscript; then
+        if start-stop-daemon --start --pidfile $pidfile --exec /bin/sh -- -c "$runscript"; then
             echo "simlist started successfully"
             RET=0
         else
