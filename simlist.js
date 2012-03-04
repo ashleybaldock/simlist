@@ -37,6 +37,7 @@ var listing,
     url,
     dns,
     querystring,
+    path,
     rawconfig,
     mustache,
     av_lang,
@@ -70,10 +71,10 @@ var listing,
     static_handler,
     make_lang,
     timeformat,
-    translate
+    translate,
+    arguments
     ;
     
-
 
 
 // Load in basic node.js functionality
@@ -83,10 +84,17 @@ sys         = require("sys");
 url         = require("url");
 dns         = require("dns");
 querystring = require("querystring");
+path        = require("path");
+
+
+// Set working directory to location of script file
+// Second argument of argv is the script location
+process.chdir(path.dirname(process.argv[1]));
 
 
 // Configuration
 // Read from config file config.json in same directory
+// Read from config file specified on command line with -c
 // LISTEN = ["2001:470:9034::3", "82.113.155.82"];
 /*
  * host                     DNS name of server (for display purposes)
@@ -318,6 +326,9 @@ start_server = function () {
             drop_privs();
         });
     }
+
+    // Lock pidfile
+    fs.writeFileSync(config.pidfile, process.pid);
 };
 
 
@@ -1508,6 +1519,8 @@ status_monitor = setTimeout(status_check, config.status_check_interval*1000);
 sync_monitor   = setTimeout(sync_check, config.sync_interval*1000);
 
 
+// TODO Read pid from pidfile, check to see if pid it contains exists and is a simlist process
+// If so refuse to start up
 start_server();
 
 

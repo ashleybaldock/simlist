@@ -1,0 +1,84 @@
+#!/bin/sh
+#
+# simlist startup script
+#
+### BEGIN INIT INFO
+# Provides:          simlist
+# Required-Start:    $remote_fs $network
+# Required-Stop:     $remote_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Simutrans listing server
+### END INIT INFO
+
+# Configuration
+
+instancename=simutrans
+
+location=/etc/init.d/simlist-$instancename
+
+pathtonode="/usr/local/bin/node"
+pathtologger="/usr/bin/logger"
+pathtosimlist="/var/simlist/$instancename/simlist.js"
+pidfile="/var/simlist/simlist-$instancename.pid"
+
+
+# Implementation
+
+action=$1
+
+# Check we are running as root
+if [ `id -u` != "0" ]; then
+        echo "ERROR: You need to be superuser" >&2
+        exit 1
+fi
+
+runscript="( $pathtonode $pathtosimlist 2>&1 & ) | $pathtologger -i -t simlist-$instancename &"
+
+case $action in
+    start)
+        echo "Attempting to start simlist..."
+        if start-stop-daemon --start --pidfile $pidfile --exec /bin/sh -- -c "$runscript"; then
+            echo "simlist started successfully"
+            RET=0
+        else
+            echo "simlist startup failed!"
+            RET=1
+        fi
+    ;;
+    stop)
+        echo "Attempting to stop simlist..."
+        if start-stop-daemon --oknodo --stop --pidfile $pidfile --exec $pathtonode; then
+            echo "simlist stopped successfully"
+            RET=0
+        else
+            echo "simlist stopping failed!"
+            RET=1
+        fi
+    ;;
+    restart|reload|force-reload)
+        echo "Attempting to restart simlist..."
+        if start-stop-daemon --oknodo --stop --pidfile $pidfile --exec $pathtonode; then
+            echo "simlist stopped successfully"
+            RET=0
+        else
+            echo "simlist stopping failed!"
+            RET=1
+            exit $RET
+        fi
+        sleep 1
+        if start-stop-daemon --start --pidfile $pidfile --exec /bin/sh -- -c "$runscript"; then
+            echo "simlist started successfully"
+            RET=0
+        else
+            echo "simlist startup failed!"
+            RET=1
+        fi
+    ;;
+    *)
+        echo "Usage: $location {start|stop|restart}" >&2
+        exit 1
+    ;;
+esac
+
+exit $RET
