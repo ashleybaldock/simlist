@@ -1482,7 +1482,7 @@ get("/list", function (req, res) {
         for (key in listing.model) {
             if (listing.model.hasOwnProperty(key)) {
                 if (listing.model[key].dns && listing.model[key].port && listing.model[key].name && listing.model[key].rev && listing.model[key].pak) {
-                    response_text = response_text + csve(listing.model[key].name) + "," + csve(listing.model[key].dns + ":" + listing.model[key].port) + "," + csve(listing.model[key].rev.toString()) + "," + csve(listing.model[key].pak) + "\n";
+                    response_text = response_text + csve(listing.model[key].name) + "," + csve(listing.model[key].dns + ":" + listing.model[key].port) + "," + csve(listing.model[key].rev.toString()) + "," + csve(listing.model[key].pak) + "," + csve(listing.model[key].st.toString()) + "\n";
                 }
             }
         }
