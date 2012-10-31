@@ -157,7 +157,7 @@ status_check = function () {
     // any not heard from in this interval should be removed entirely
     cdate = (new Date()).getTime();
     for (key in listing.model) {
-        if (listing.model.hasOwnProperty(key) && listing.model[key].st > 0) {
+        if (listing.model.hasOwnProperty(key)) {
             console.log("Checking server: " + key + " aiv: " + listing.model[key].aiv);
             // Check for prune interval
             prunedate = listing.model[key].date + config.prune_interval * 1000;
