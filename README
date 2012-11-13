@@ -9,6 +9,13 @@ Persistent data is saved to a file, you can change where this file is stored via
 By default simlist will bind to port 80 on the addresses specified, then drop root privs and run as www-data. You can configure this all via the config file.
 
 
+Installation
+
+Check out source, copy config.json.default to config.json and modify configuration settings to suit your environment.
+
+Use npm to install mustache, e.g. "npm install mustache" (this should be run from the install directory).
+
+
 Instances
 
 simlist can be run with multiple instances, if you need multiple listings servers. Note that this requires compiled-in support from the game itself and is only really useful to let you run listings servers for both the standard and experimental versions of the game.
