@@ -130,7 +130,7 @@ this.model = {};
 // Internals
 
 // Load in mustache
-mustache    = require(config.mustache);
+mustache    = require("mustache");
 
 // Set up available languages/formats
 av_lang     = ["en", "de", "fr"];
