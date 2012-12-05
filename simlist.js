@@ -133,7 +133,7 @@ this.model = {};
 mustache    = require("mustache");
 
 // Set up available languages/formats
-av_lang     = ["en", "de", "fr"];
+av_lang     = ["en"];
 av_formats  = ["html", "csv"];
 
 starttime   = (new Date()).getTime();
