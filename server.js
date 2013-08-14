@@ -26,8 +26,6 @@ var translator = require('./lib/Translator.js');
 var app = express();
 app.use(express.bodyParser());
 
-var listing = new listing.Listing();
-
 var translate = (new translator.Translator()).translate;
 
 // Set up available languages/formats
@@ -63,69 +61,45 @@ app.get('/announce', function(req, res) {
 });
 
 app.post('/announce', function(req, res) {
+    var err;
     console.log("POST from " + req.connection.remoteAddress + " to " + req.url);
 
-    var err;
-
-    // ID formed of dns and port fields, these must be present + valid
-    if (req.body.port && listing.ifields.port.validate(listing.ifields.port.parse(req.body.port))) {
-        
-        // Valid port field
-        if (req.body.dns) {
-            listing.ifields.dns.validate(listing.ifields.dns.parse(req.body.dns),
-                req.connection.remoteAddress,
-                function () {
-                    var id, key;
-                    // Success callback
-
-                    id = req.body.dns + ":" + req.body.port;
-
-                    if (!listing.lookup(id)) {
-                        listing.makenew(id, listing.ifields.dns.parse(req.body.dns), listing.ifields.port.parse(req.body.port));
-                    }
-
-                    for (key in req.body)
-                    {
-                        if (req.body.hasOwnProperty(key)) {
-                            console.log("post data - " + key + ": " + req.body[key]);
-                            listing.update_field(id, key, req.body[key]);
-                        }
-                    }
-
-                    // Set date of this request, to keep track of server status in future
-                    listing.update_datestamp(id);
-
-                    // Respond with just 202 Accepted header + single error code digit
-                    // TODO replace with a better HTTP response given that we know if it worked now
-                    res.writeHead(202, {"Content-Type": "text/html"});
-                    res.end("<a href=\"./list\">back to list</a>");
-                    
-                }, function () {
-                    // Failure callback
-                    // Invalid ID, return Bad Request error
-                    var err = "Bad Request - DNS field invalid";
-                    console.error(err);
-                    res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
-                    res.end(err);
-                    return;
-                });
-        } else {
-            // Failure callback
-            // Invalid ID, return Bad Request error
-            err = "Bad Request - Missing DNS field";
-            console.error(err);
-            res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
-            res.end(err);
-            return;
-        }
-    } else {
-        // Invalid ID, return Bad Request error
-        err = "Bad Request - Missing port field or value invalid";
-        console.error(err);
-        res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
-        res.end(err);
+    // Perform validation of request
+    if (!req.body.port) {
+        res.send(400, "Bad Request - port field missing");
         return;
     }
+    if (!listing.validate_port(listing.parse_port(req.body.port))) {
+        res.send(400, "Bad Request - port field invalid");
+        return;
+    }
+    if (!req.body.dns) {
+        res.send(400, "Bad Request - DNS field missing");
+        return;
+    }
+
+    // DNS name must match requestor
+    // TODO cope with proxy http header here
+    listing.validate_dns(listing.parse_dns(req.body.dns), req.connection.remoteAddress,
+        function () {
+            // Success callback
+            var new_listing = new listing.Listing(req.body.dns, req.body.port);
+
+            var existing_listing = {};  // TODO get from object store
+            new_listing.update_from_object(existing_listing);
+            new_listing.update_from_body(req.body);
+
+            // Respond with just 202 Accepted header + single error code digit
+            // TODO replace with a better HTTP response given that we know if it worked now
+            res.writeHead(202, {"Content-Type": "text/html"});
+            res.end(JSON.stringify(new_listing));
+            //res.end("<a href=\"./list\">back to list</a>");
+
+            // TODO persist back to DB
+        }, function () {
+            // Failure callback
+            res.send(400, "Bad Request - DNS field invalid");
+    });
 });
 
 app.get('/list', function(req, res) {
