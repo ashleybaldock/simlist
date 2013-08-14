@@ -14,7 +14,7 @@
 {{#data}}
         <div class="st_{{st}}">
             <a name="{{dns}}:{{port}}"></a>
-            <a href="map_graphic_big.png"><img src="demomap.png" width="64" height="64" /></a>
+            <a href="map_graphic_big.png"><img src="static/demomap.png" width="64" height="64" /></a>
             <div> <!-- Floated to right of image -->
                 <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}&nbsp;({{#translate}}status_{{st}}{{/translate}})</h3>
                 <p>{{#translate}}list_time_1{{/translate}}{{#size}}{{#x}}{{x}}x{{y}}{{/x}}{{^x}}{{#translate}}size_unknown{{/translate}}{{/x}}{{/size}}{{#translate}}list_time_2{{/translate}}{{#time}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}time_unknown{{/translate}}{{/mn}}{{/time}}&nbsp;{{#translate}}list_time_3{{/translate}}{{#start}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}start_unknown{{/translate}}{{/mn}}{{/start}}{{#translate}}list_time_4{{/translate}}</p>
