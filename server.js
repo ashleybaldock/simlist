@@ -1,3 +1,22 @@
+// 
+// Simutrans Listing Server
+// 
+// Version 1.0
+// 
+// 
+// Copyright © 2011 Timothy Baldock. All Rights Reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+// 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// 3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission from the author.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+// 
+
 var express    = require('express');
 var fs         = require("fs");
 var mustache   = require('mustache');
@@ -5,6 +24,7 @@ var listing    = require('./lib/Listing.js');
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
 var app = express();
+app.use(express.bodyParser());
 
 var listing = new listing.Listing();
 
@@ -24,7 +44,7 @@ var templates = {};
 for (n in templatefiles) {
     if (templatefiles.hasOwnProperty(n)) {
         console.log("loading file: " + templatefiles[n] + "...");
-        templates[templatefiles[n]] = fs.readFileSync(templatefiles[n], "utf8");
+        templates[templatefiles[n]] = fs.readFileSync("templates/" + templatefiles[n], "utf8");
     }
 }
 
@@ -44,7 +64,68 @@ app.get('/announce', function(req, res) {
 
 app.post('/announce', function(req, res) {
     console.log("POST from " + req.connection.remoteAddress + " to " + req.url);
-    // TODO
+
+    var err;
+
+    // ID formed of dns and port fields, these must be present + valid
+    if (req.body.port && listing.ifields.port.validate(listing.ifields.port.parse(req.body.port))) {
+        
+        // Valid port field
+        if (req.body.dns) {
+            listing.ifields.dns.validate(listing.ifields.dns.parse(req.body.dns),
+                req.connection.remoteAddress,
+                function () {
+                    var id, key;
+                    // Success callback
+
+                    id = req.body.dns + ":" + req.body.port;
+
+                    if (!listing.lookup(id)) {
+                        listing.makenew(id, listing.ifields.dns.parse(req.body.dns), listing.ifields.port.parse(req.body.port));
+                    }
+
+                    for (key in req.body)
+                    {
+                        if (req.body.hasOwnProperty(key)) {
+                            console.log("post data - " + key + ": " + req.body[key]);
+                            listing.update_field(id, key, req.body[key]);
+                        }
+                    }
+
+                    // Set date of this request, to keep track of server status in future
+                    listing.update_datestamp(id);
+
+                    // Respond with just 202 Accepted header + single error code digit
+                    // TODO replace with a better HTTP response given that we know if it worked now
+                    res.writeHead(202, {"Content-Type": "text/html"});
+                    res.end("<a href=\"./list\">back to list</a>");
+                    
+                }, function () {
+                    // Failure callback
+                    // Invalid ID, return Bad Request error
+                    var err = "Bad Request - DNS field invalid";
+                    console.error(err);
+                    res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
+                    res.end(err);
+                    return;
+                });
+        } else {
+            // Failure callback
+            // Invalid ID, return Bad Request error
+            err = "Bad Request - Missing DNS field";
+            console.error(err);
+            res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
+            res.end(err);
+            return;
+        }
+    } else {
+        // Invalid ID, return Bad Request error
+        err = "Bad Request - Missing port field or value invalid";
+        console.error(err);
+        res.writeHead(400, {"Content-Type": "text/plain", "Content-Length": err.length});
+        res.end(err);
+        return;
+    }
 });
 
 app.get('/list', function(req, res) {
