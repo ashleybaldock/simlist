@@ -11,14 +11,12 @@ var listing = new listing.Listing();
 var translate = (new translator.Translator()).translate;
 
 // Set up available languages/formats
-var available_languages     = ["en"];
 var available_formats  = ["html", "csv"];
 
 var templatefiles = [
     "header.html",
     "footer.html",
     "announce.html",
-    "langselect.html",
     "list.html"
 ];
 var templates = {};
@@ -30,25 +28,6 @@ for (n in templatefiles) {
     }
 }
 
-
-var make_language_link_list = function (current, baseurl) {
-    var cur, make_url, ret, n;
-    cur = function (lang) {
-        return lang === current;
-    };
-    make_url = function (lang) {
-        if (baseurl.indexOf("?") !== -1) {
-            return baseurl + "&lang=" + lang;
-        } else {
-            return baseurl + "?lang=" + lang;
-        }
-    };
-    ret = [];
-    for (n in available_languages) {
-        ret.push({name: available_languages[n], cur: cur(available_languages[n]), url: make_url(available_languages[n])});
-    }
-    return ret;
-};
 
 app.use('/static', express.static(__dirname + '/public'));
 
@@ -76,10 +55,6 @@ app.get('/list', function(req, res) {
     console.log("GET from " + req.connection.remoteAddress + " for " + req.url);
 
     // Process defaults
-    if (!req.query.lang || available_languages.indexOf(req.query.lang) < 0) {
-        console.log("No language specified, defaulting to English");
-        req.query.lang = "en";
-    }
     if (!req.query.format) {
         console.log("No format specified, defaulting to HTML");
         req.query.format = "html";
@@ -92,17 +67,10 @@ app.get('/list', function(req, res) {
         res.write(mustache.to_html(templates["header.html"],
             {title: req.host + " - Server listing", lang: req.query.lang, translate: translate}));
 
-        // Write language selector
         urlbase = "./list";
         if (req.query.detail) {
             urlbase = urlbase + "?detail=" + req.query.detail;
         }
-        res.write(mustache.to_html(templates["langselect.html"],
-            {available_lang: make_language_link_list(req.query.lang, urlbase), translate: translate}
-        ));
-
-        // Pakset ID string split by space, first part used to collate them
-
 
         get_times = function (date, aiv) {
             var cdate, last, offset, next, odue;
@@ -159,9 +127,6 @@ app.get('/list', function(req, res) {
             {lang: req.query.lang, translate: translate, timeformat: simutil.format_time,
              paksets: paksets_mapped}));
 
-        res.write(mustache.to_html(templates["langselect.html"],
-            {available_lang: make_language_link_list(req.query.lang, urlbase), translate: translate}
-        ));
         res.write(mustache.to_html(templates["footer.html"], {}));
         res.end();
 
