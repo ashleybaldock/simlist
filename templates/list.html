@@ -1,7 +1,7 @@
 <div class="paksets">
     <ul>
 {{#paksets}}
-        <li><a href="./list?lang={{lang}}#{{name}}">{{name}}</a></li>
+        <li><a href="./list#{{name}}">{{name}}</a></li>
 {{/paksets}}
     </ul>
 
@@ -22,14 +22,14 @@
 {{/data}}
 {{^detail}}
 {{#data}}
-                <p><a href="./list?lang={{lang}}&detail={{dns}}:{{port}}#{{dns}}:{{port}}">{{#translate}}show_server_detail{{/translate}}</a></p>
+                <p><a href="./list?detail={{dns}}:{{port}}#{{dns}}:{{port}}">{{#translate}}show_server_detail{{/translate}}</a></p>
             </div>
         </div>
 {{/data}}
 {{/detail}}
 {{#detail}}
 {{#data}}
-                <p><a href="./list?lang={{lang}}#{{dns}}:{{port}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
+                <p><a href="./list#{{dns}}:{{port}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
                 <p>{{#translate}}list_map_1{{/translate}}{{towns}}{{#translate}}list_map_2{{/translate}}{{citizens}}{{#translate}}list_map_3{{/translate}}{{factories}}{{#translate}}list_map_4{{/translate}}{{convoys}}{{#translate}}list_map_5{{/translate}}{{stops}}{{#translate}}list_map_6{{/translate}}</p>
                 <p>{{#translate}}list_pakset{{/translate}}{{pak}}</p>
                 <p>{{#translate}}list_ver{{/translate}}{{ver}}</p>

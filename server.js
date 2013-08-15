@@ -30,7 +30,9 @@ app.use(express.bodyParser());
 
 var translate = (new translator.Translator()).translate;
 
-// Set up available languages/formats
+//var prune_interval = 604800;
+var prune_interval = 60;
+// Set up available formats
 var available_formats  = ["html", "csv"];
 
 var templatefiles = [
@@ -80,7 +82,6 @@ app.post('/announce', function(req, res) {
         return;
     }
 
-    // DNS name must match requestor
     // TODO cope with proxy http header here
     listing.validate_dns(listing.parse_dns(req.body.dns), req.connection.remoteAddress,
         function () {
@@ -106,7 +107,6 @@ app.post('/announce', function(req, res) {
 });
 
 app.get('/list', function(req, res) {
-    "use strict";
     var urlbase, pakset_names, paksets, paksets_mapped,
         key, new_item, pakstring, response_text,
         err;
@@ -128,7 +128,7 @@ app.get('/list', function(req, res) {
 
         // Write header
         res.write(mustache.to_html(templates["header.html"],
-            {title: req.host + " - Server listing", lang: req.query.lang, translate: translate}));
+            {title: req.host + " - Server listing", translate: translate}));
 
         urlbase = "./list";
         if (req.query.detail) {
@@ -147,19 +147,30 @@ app.get('/list', function(req, res) {
             for (key in listings) {
                 if (listings.hasOwnProperty(key)) {
                     var item = listings[key];
-                    var pakset_name = item.pak.split(" ")[0];
-                    if (pakset_names.indexOf(pakset_name) < 0) {
-                        pakset_names.push(pakset_name);
-                        pakset_groups[pakset_name] = [];
+                    var timings = simutil.get_times(item.date, item.aiv);
+                    if (timings.overdue_by > prune_interval * 1000) {
+                        // Prune expired servers
+                        listingProvider.removeById(item.id, function(removed) {
+                            console.log("Pruned stale server with id: " + removed.id);
+                        });
+                    } else {
+                        if (timings.overdue_by > item.aiv * 1000) {
+                            item.st = 0;
+                        }
+                        var pakset_name = item.pak.split(" ")[0];
+                        if (pakset_names.indexOf(pakset_name) < 0) {
+                            pakset_names.push(pakset_name);
+                            pakset_groups[pakset_name] = [];
+                        }
+                        pakset_groups[pakset_name].push({
+                            detail: (key === req.query.detail),
+                            data: item,
+                            timing: timings
+                        });
                     }
-                    console.log(simutil.get_times(item.date, item.aiv));
-                    pakset_groups[pakset_name].push({
-                        detail: (key === req.query.detail),
-                        data: item,
-                        timing: simutil.get_times(item.date, item.aiv)
-                    });
                 }
             }
+
             // Map paksets into output format for mustache
             paksets_mapped = [];
             for (key in pakset_groups) {
@@ -167,7 +178,7 @@ app.get('/list', function(req, res) {
             }
 
             res.write(mustache.to_html(templates["list.html"],
-                {lang: req.query.lang, translate: translate, timeformat: simutil.format_time,
+                {translate: translate, timeformat: simutil.format_time,
                  paksets: paksets_mapped}));
 
             res.write(mustache.to_html(templates["footer.html"], {}));
