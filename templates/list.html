@@ -43,11 +43,10 @@
                         {{#translate}}list_announce_3{{/translate}}
                         {{#timeformat}}{{next}}{{/timeformat}}
                     {{/next}}
-                    {{#odue}}
+                    {{#overdue_by}}
                         {{#translate}}list_announce_4{{/translate}}
-                        {{#timeformat}}{{odue}}{{/timeformat}}
-                    {{/odue}}
-                    {{#translate}}list_announce_5{{/translate}}</p>
+                        {{#timeformat}}{{overdue_by}}{{/timeformat}}
+                    {{/overdue_by}}
 {{/timing}}
 {{#data}}
                 <p>{{#translate}}list_email{{/translate}}{{#email}}<a href="mailto:{{email}}">{{email}}</a>{{/email}}{{^email}}{{#translate}}list_notset{{/translate}}{{/email}}</p>
