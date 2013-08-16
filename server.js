@@ -85,7 +85,6 @@ app.post('/announce', function(req, res) {
         return;
     }
 
-    // TODO cope with proxy http header here
     listing.validate_dns(listing.parse_dns(req.body.dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);

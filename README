@@ -4,10 +4,18 @@ server.js is designed to be run via Node, version 10.12 or greater. Logging goes
 
 Persistent data is saved to a MongoDB database.
 
+Configuration is via environment parameters:
+
+HEADER_IMAGE - the header image/logo to use for the top of the page
+PORT         - the TCP port to bind to
+MONGOLAB_URI - the (MongoLabs) or otherwise MongoDB connection string
+
 
 Installation
 
 Check out source, run "npm install" to install required packages. Run using "node server.js".
+
+Current version is optimised to run on Heroku.
 
 
 Instances
