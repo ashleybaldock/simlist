@@ -53,9 +53,7 @@ for (n in templatefiles) {
 
 app.use('/static', express.static(__dirname + '/public'));
 
-app.get('/', function(req, res) {
-    res.redirect(301, '/list');
-});
+app.get('/', function(req, res) { res.redirect(301, '/list'); });
 
 app.get('/announce', function(req, res) {
     console.log("GET " + req.url);
@@ -68,7 +66,6 @@ app.post('/announce', function(req, res) {
     var err;
     console.log("POST from " + req.connection.remoteAddress + " to " + req.url);
 
-    // Perform validation of request
     if (!req.body.port) {
         res.send(400, "Bad Request - port field missing");
         return;
@@ -91,14 +88,10 @@ app.post('/announce', function(req, res) {
                 new_listing.update_from_object(existing_listing);
                 new_listing.update_from_body(req.body);
 
-                // Respond with just 202 Accepted header + single error code digit
-                // TODO replace with a better HTTP response given that we know if it worked now
-                res.writeHead(202, {"Content-Type": "text/html"});
-                res.end(JSON.stringify(new_listing));
-                //res.end("<a href=\"./list\">back to list</a>");
                 listingProvider.save(new_listing, function () {
                     console.log("Persisted new listing");
                 });
+                res.send(201, JSON.stringify(new_listing));
             });
         }, function () {
             res.send(400, "Bad Request - DNS field invalid");
@@ -112,16 +105,8 @@ app.get('/list', function(req, res) {
         err;
     console.log("GET from " + req.connection.remoteAddress + " for " + req.url);
 
-    // TODO
-    // Rewrite this all using new Listings driver
-    // GET should show recently offline servers in red, and not return ones which
-    // have been offline for too long. Calculated dynamically during request
-
     // Process defaults
-    if (!req.query.format) {
-        console.log("No format specified, defaulting to HTML");
-        req.query.format = "html";
-    }
+    if (!req.query.format) { req.query.format = "html"; }
 
     if (req.query.format === "html") {
         res.writeHead(200, {"Content-Type": "text/html"});
@@ -135,12 +120,6 @@ app.get('/list', function(req, res) {
             urlbase = urlbase + "?detail=" + req.query.detail;
         }
 
-        // TODO - optimise this to only attach timing info for the expanded entry
-
-        // TODO online/offline
-        // online if it says it is IFF last report within announce interval
-        // offline otherwise
-        // Any entry found to be outside prune interval should be deleted
         listingProvider.findAll(function (listings) {
             var pakset_names = [];
             var pakset_groups = {};
@@ -149,7 +128,6 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-                        // Prune expired servers
                         listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
                         });
@@ -190,19 +168,29 @@ app.get('/list', function(req, res) {
         listingProvider.findAll(function (listings) {
             for (key in listings) {
                 if (listings.hasOwnProperty(key)) {
-                    // TODO without a name field upload the dns/port field in its place
-                    if (listings[key].dns
-                        && listings[key].port
-                        && listings[key].name 
-                        && listings[key].rev
-                        && listings[key].pak) {
-                        response = response
-                            + csv_escape(listings[key].name)
-                            + "," + csv_escape(listings[key].dns
-                            + ":" + listings[key].port)
-                            + "," + csv_escape(listings[key].rev.toString())
-                            + "," + csv_escape(listings[key].pak)
-                            + "," + csv_escape(listings[key].st.toString()) + "\n";
+                    var item = listings[key];
+                    var timings = simutil.get_times(item.date, item.aiv);
+                    if (timings.overdue_by > prune_interval * 1000) {
+                        listingProvider.removeById(item.id, function(removed) {
+                            console.log("Pruned stale server with id: " + removed.id);
+                        });
+                    } else {
+                        if (timings.overdue_by > item.aiv * 1000) {
+                            item.st = 0;
+                        }
+                        if (item.dns
+                            && item.port
+                            && item.name 
+                            && item.rev
+                            && item.pak) {
+                            response = response
+                                + simutil.csv_escape(item.name)
+                                + "," + simutil.csv_escape(item.dns
+                                + ":" + item.port)
+                                + "," + simutil.csv_escape(item.rev.toString())
+                                + "," + simutil.csv_escape(item.pak)
+                                + "," + simutil.csv_escape(item.st.toString()) + "\n";
+                        }
                     }
                 }
             }
