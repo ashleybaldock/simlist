@@ -203,5 +203,5 @@ app.get('/list', function(req, res) {
     }
 });
 
-app.listen(config.port);
-console.log('Listening on port ' + config.port);
+app.listen(process.env.PORT);
+console.log('Listening on port ' + process.env.PORT);
