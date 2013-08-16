@@ -1,8 +1,6 @@
 // 
 // Simutrans Listing Server
 // 
-// Version 2.0
-// 
 // 
 // Copyright © 2011-2013 Timothy Baldock. All Rights Reserved.
 // 
@@ -27,6 +25,7 @@ var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
 var app = express();
 app.use(express.bodyParser());
+app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
 
@@ -64,7 +63,7 @@ app.get('/announce', function(req, res) {
 
 app.post('/announce', function(req, res) {
     var err;
-    console.log("POST from " + req.connection.remoteAddress + " to " + req.url);
+    console.log("POST from " + req.ip + " to " + req.url);
 
     if (!req.body.port) {
         res.send(400, "Bad Request - port field missing");
@@ -80,7 +79,7 @@ app.post('/announce', function(req, res) {
     }
 
     // TODO cope with proxy http header here
-    listing.validate_dns(listing.parse_dns(req.body.dns), req.connection.remoteAddress,
+    listing.validate_dns(listing.parse_dns(req.body.dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);
 
@@ -103,7 +102,7 @@ app.get('/list', function(req, res) {
     var urlbase, pakset_names, paksets, paksets_mapped,
         key, new_item, pakstring, response_text,
         err;
-    console.log("GET from " + req.connection.remoteAddress + " for " + req.url);
+    console.log("GET from " + req.ip + " for " + req.url);
 
     // Process defaults
     if (!req.query.format) { req.query.format = "html"; }
