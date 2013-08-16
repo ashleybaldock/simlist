@@ -1,10 +1,10 @@
 // 
 // Simutrans Listing Server
 // 
-// Version 1.0
+// Version 2.0
 // 
 // 
-// Copyright © 2011 Timothy Baldock. All Rights Reserved.
+// Copyright © 2011-2013 Timothy Baldock. All Rights Reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 // 
@@ -21,7 +21,7 @@ var express    = require('express');
 var fs         = require("fs");
 var mustache   = require('mustache');
 var listing    = require('./lib/Listing.js');
-var ListingProvider = require('./lib/ListingProvider.js').ListingProvider;
+var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 var listingProvider = new ListingProvider();
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
