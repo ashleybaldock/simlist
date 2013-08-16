@@ -1,0 +1,10 @@
+{
+    "prune_interval": 60,
+    "port": 80,
+
+    "db_name": "",
+    "db_fqdn": "",
+    "db_port": 0,
+    "db_user": "",
+    "db_pass": ""
+}
