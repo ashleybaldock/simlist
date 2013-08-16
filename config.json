@@ -1,6 +1,4 @@
 {
     "prune_interval": 60,
-    "port": 80,
-
-    "db_string": process.env.MONGOLAB_URI
+    "port": 80
 }
