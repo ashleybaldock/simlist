@@ -15,7 +15,6 @@
 // THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 // 
 
-var config     = require('./config.json');
 var express    = require('express');
 var fs         = require("fs");
 var mustache   = require('mustache');
@@ -30,6 +29,8 @@ app.use(express.bodyParser());
 app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
+
+var prune_interval = 604800;
 
 // Set up available formats
 var available_formats  = ["html", "csv"];
@@ -126,7 +127,7 @@ app.get('/list', function(req, res) {
                 if (listings.hasOwnProperty(key)) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
-                    if (timings.overdue_by > config.prune_interval * 1000) {
+                    if (timings.overdue_by > prune_interval * 1000) {
                         listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
                         });
@@ -169,7 +170,7 @@ app.get('/list', function(req, res) {
                 if (listings.hasOwnProperty(key)) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
-                    if (timings.overdue_by > config.prune_interval * 1000) {
+                    if (timings.overdue_by > prune_interval * 1000) {
                         listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
                         });
