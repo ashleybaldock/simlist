@@ -15,13 +15,19 @@
 // THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 // 
 
+// Configured by environment parameters
+var header_image      = process.env.HEADER_IMAGE;
+var port              = process.env.PORT;
+var connection_string = process.env.MONGOLAB_URI;
+
+// Includes
 var express    = require('express');
 var fs         = require("fs");
 var mustache   = require('mustache');
 var listing    = require('./lib/Listing.js');
-//var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 var ListingProvider = require('./lib/MongoDBListingProvider.js').ListingProvider;
-var listingProvider = new ListingProvider();
+//var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
+var listingProvider = new ListingProvider(connection_string);
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
 var app = express();
@@ -113,7 +119,7 @@ app.get('/list', function(req, res) {
 
         // Write header
         res.write(mustache.to_html(templates["header.html"],
-            {title: req.host + " - Server listing", translate: translate}));
+            {title: req.host + " - Server listing", translate: translate, headerimage: header_image}));
 
         urlbase = "./list";
         if (req.query.detail) {
@@ -204,5 +210,5 @@ app.get('/list', function(req, res) {
     }
 });
 
-app.listen(process.env.PORT);
-console.log('Listening on port ' + process.env.PORT);
+app.listen(port);
+console.log('Listening on port ' + port);
