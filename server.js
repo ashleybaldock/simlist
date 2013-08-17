@@ -182,7 +182,7 @@ app.get('/list', function(req, res) {
                             && item.port
                             && item.name 
                             && item.rev
-                            && item.pak) {
+                            && item.pak && item.pak !== "unknown") {
                             response = response
                                 + simutil.csv_escape(item.name)
                                 + "," + simutil.csv_escape(item.dns
