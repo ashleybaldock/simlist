@@ -70,6 +70,8 @@ app.get('/announce', function(req, res) {
 app.post('/announce', function(req, res) {
     var err;
 
+    if (req.body.ip === '178.77.102.239') { req.end(403, "IP forbidden"); return; }
+
     if (!req.body.port) {
         res.send(400, "Bad Request - port field missing");
         return;
