@@ -86,6 +86,8 @@ app.post('/announce', function(req, res) {
     listing.validate_dns(listing.parse_dns(req.body.dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);
+            console.log(JSON.stringify(req.body));
+            if (new_listing.name === "") { new_listing.name = new_listing.dns; }
 
             listingProvider.findById(new_listing.id, function (existing_listing) {
                 new_listing.update_from_object(existing_listing);
