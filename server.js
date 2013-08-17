@@ -93,9 +93,7 @@ app.post('/announce', function(req, res) {
                 new_listing.update_from_object(existing_listing);
                 new_listing.update_from_body(req.body);
 
-                listingProvider.save(new_listing, function () {
-                    console.log("Persisted new listing");
-                });
+                listingProvider.save(new_listing, function () {});
                 res.send(201, JSON.stringify(new_listing));
             });
         }, function () {
