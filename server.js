@@ -68,8 +68,6 @@ app.get('/announce', function(req, res) {
 });
 
 app.post('/announce', function(req, res) {
-    var err;
-
     if (req.ip === '178.77.102.239') { res.send(403, "IP forbidden"); return; }
 
     if (!req.body.port) {
@@ -105,9 +103,7 @@ app.post('/announce', function(req, res) {
 });
 
 app.get('/list', function(req, res) {
-    var urlbase, pakset_names, paksets, paksets_mapped,
-        key, new_item, pakstring, response_text,
-        err;
+    var urlbase, key;
 
     // Process defaults
     if (!req.query.format) { req.query.format = "html"; }
@@ -154,7 +150,7 @@ app.get('/list', function(req, res) {
             }
 
             // Map paksets into output format for mustache
-            paksets_mapped = [];
+            var paksets_mapped = [];
             for (key in pakset_groups) {
                 paksets_mapped.push({name: key, items: pakset_groups[key]});
             }
@@ -198,13 +194,10 @@ app.get('/list', function(req, res) {
                     }
                 }
             }
-            res.writeHead(200, {"Content-Type": "text/plain", "Content-Length": response.length});
-            res.end(response);
+            res.send(200, response);
         });
     } else {
-        err = "501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString();
-        res.writeHead(501, {"Content-Type": "text/html", "Content-Length": err.length});
-        res.end(err);
+        res.send(501, "501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
     }
 });
 
