@@ -62,7 +62,6 @@ app.use('/static', express.static(__dirname + '/public'));
 app.get('/', function(req, res) { res.redirect(301, '/list'); });
 
 app.get('/announce', function(req, res) {
-    console.log("GET " + req.url);
     res.writeHead(405, {"Content-Type": "text/html", "Allow": "POST"});
     res.write(mustache.to_html(templates["announce.html"], {}));
     res.end();
@@ -70,7 +69,6 @@ app.get('/announce', function(req, res) {
 
 app.post('/announce', function(req, res) {
     var err;
-    console.log("POST from " + req.ip + " to " + req.url);
 
     if (!req.body.port) {
         res.send(400, "Bad Request - port field missing");
@@ -106,7 +104,6 @@ app.get('/list', function(req, res) {
     var urlbase, pakset_names, paksets, paksets_mapped,
         key, new_item, pakstring, response_text,
         err;
-    console.log("GET from " + req.ip + " for " + req.url);
 
     // Process defaults
     if (!req.query.format) { req.query.format = "html"; }
