@@ -2,7 +2,7 @@
 // Simutrans Listing Server
 // 
 // 
-// Copyright © 2011-2013 Timothy Baldock. All Rights Reserved.
+// Copyright © 2011-2014 Timothy Baldock. All Rights Reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 // 
@@ -16,31 +16,27 @@
 // 
 
 // Configured by environment parameters
-var header_image      = process.env.HEADER_IMAGE;
-var port              = process.env.PORT;
-var connection_string = process.env.MONGOLAB_URI;
+var header_image      = process.env.HEADER_IMAGE || "simlogo.png";
+var port              = process.env.PORT || 80;
+var prune_interval    = process.env.PRUNE_INTERVAL || 604800;
 
 // Includes
 var express    = require('express');
 var fs         = require("fs");
 var mustache   = require('mustache');
 var listing    = require('./lib/Listing.js');
-//var ListingProvider = require('./lib/MongoDBListingProvider.js').ListingProvider;
-var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
-var listingProvider = new ListingProvider(connection_string);
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
+var ListingProvider = require('./lib/MongoDBListingProvider.js').ListingProvider;
+//var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
+
 var app = express();
+
 app.use(express.bodyParser());
 app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
-
-var prune_interval = 604800;
-
-// Set up available formats
 var available_formats  = ["html", "csv"];
-
 var templatefiles = [
     "header.html",
     "footer.html",
@@ -56,6 +52,10 @@ for (n in templatefiles) {
     }
 }
 
+var listingProvider = new ListingProvider(function () {
+    app.listen(port);
+    console.log('Listening on port ' + port);
+});
 
 app.use('/static', express.static(__dirname + '/public'));
 
@@ -201,5 +201,3 @@ app.get('/list', function(req, res) {
     }
 });
 
-app.listen(port);
-console.log('Listening on port ' + port);

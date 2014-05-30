@@ -6,14 +6,15 @@ Persistent data is saved to a MongoDB database.
 
 Configuration is via environment parameters:
 
-HEADER_IMAGE - the header image/logo to use for the top of the page
-PORT         - the TCP port to bind to
-MONGOLAB_URI - the (MongoLabs) or otherwise MongoDB connection string
+HEADER_IMAGE   - the header image/logo to use for the top of the page (default: "simlogo.png")
+PORT           - the TCP port to bind to (default: "80")
+MONGOLAB_URI   - the (MongoLabs) or otherwise MongoDB connection string (no default)
+PRUNE_INTERVAL - the time (in seconds) after which old server listings are removed (default: 604800)
 
 
 Installation
 
-Check out source, run "npm install" to install required packages. Run using "node server.js".
+Check out source, run "npm install" to install required packages. Set desired environment parameters and then run using "node server.js".
 
 Current version is optimised to run on Heroku.
 
